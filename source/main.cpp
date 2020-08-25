@@ -22,6 +22,7 @@ int width = 800, height = 600;
 float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f;;
 bool wireframe = false, first_mouse = false, collapse_edge = false, show_model = true;
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
+GLuint volume_texture_id;
 GLFWwindow *window;
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
@@ -34,11 +35,36 @@ void uploadMatrices(GLuint shader);
 
 void initialize();
 
+void draw_imgui_windows();
+
+void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned short y_dim, unsigned short z_dim);
+
+std::vector<glm::vec3> compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim);
+
 int main(int argc, const char *argv[]) {
 
     initialize();
 
-    Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag"};
+    Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag", "../shader/base.geom"};
+    //Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag"};
+    glUseProgram(normal_shader.get_program());
+
+    unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
+    int dimensions_location = glGetUniformLocation(normal_shader.get_program(), "volume_dimensions");
+    glUniform3f(dimensions_location, x_dim, y_dim, z_dim);
+
+
+    load_raw_volume("../volume_files/bucky.raw", x_dim, y_dim,z_dim);
+
+    std::vector<glm::vec3> points = compute_voxel_points(x_dim, y_dim, z_dim);
+
+    GLuint VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    glGenBuffers(1,&VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * points.size(), points.data(), GL_STATIC_DRAW);
+
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
@@ -47,23 +73,20 @@ int main(int argc, const char *argv[]) {
         last_frame_time = currentFrame;
         glfwGetFramebufferSize(window, &width, &height);
 
+        uploadMatrices(normal_shader.get_program());
+
         // specify the background color
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         // clear color, depth and stencil buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        uploadMatrices(normal_shader.get_program());
-        glUseProgram(normal_shader.get_program());
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, GLsizei (3 * sizeof(float)), (GLvoid *) 0);
+        glDrawArrays(GL_POINTS, 0, points.size());
 
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
-        ImGui::NewFrame();
-        ImGui::SetNextWindowSize({350, 100});
-        ImGui::Begin("Statistics");
-        ImGui::Text("Position: %f, %f, %f", camera->Position.x, camera->Position.y, camera->Position.z);
-        ImGui::End();
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        draw_imgui_windows();
 
         glfwPollEvents();
         glfwSwapBuffers(window);
@@ -81,6 +104,54 @@ int main(int argc, const char *argv[]) {
     glfwTerminate();
     return 0;
 }
+
+std::vector<glm::vec3> compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim){
+    std::vector<glm::vec3> points;
+    for(int i = 0; i < x_dim; ++i){
+        for(int j = 0; j < y_dim; ++j){
+            for(int k = 0; k < z_dim; ++k){
+                points.emplace_back(i,j,k);
+            }
+        }
+    }
+    return points;
+}
+
+void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned short y_dim, unsigned short z_dim){
+    FILE *file = fopen(raw_volume_path, "rb");
+    if(file == NULL){
+        std::cout << "could not load the volume\n";
+        return;
+    }
+
+    GLubyte* volume = new GLubyte[x_dim * y_dim * z_dim];
+    fread(volume, sizeof(GLubyte), x_dim * y_dim * z_dim, file);
+    fclose(file);
+
+    glGenTextures(1, &volume_texture_id);
+
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_INTENSITY, x_dim, y_dim, z_dim, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, volume);
+    delete[] volume;
+};
+
+void draw_imgui_windows(){
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        ImGui::SetNextWindowSize({350, 100});
+        ImGui::Begin("Statistics");
+        ImGui::Text("Position: %f, %f, %f", camera->Position.x, camera->Position.y, camera->Position.z);
+        ImGui::End();
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+};
 
 // this function is called when a key is pressed
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
@@ -150,7 +221,6 @@ void uploadMatrices(GLuint shader) {
     glm::mat4 view = camera->GetViewMatrix();
     glm::mat4 projection = glm::perspective(glm::radians(60.0f), width / (float) height, 0.1f, 10000.0f);
 
-    glUseProgram(shader);
     glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, &model[0][0]);
     glUniformMatrix4fv(glGetUniformLocation(shader, "projection"), 1, GL_FALSE, &projection[0][0]);
     glUniformMatrix4fv(glGetUniformLocation(shader, "view"), 1, GL_FALSE, &view[0][0]);
