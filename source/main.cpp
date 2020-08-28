@@ -218,6 +218,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 // this function uploads the model, view and projection matrix to the shader if they are defined in the shader
 void uploadMatrices(GLuint shader) {
     glm::mat4 model = glm::mat4(1.0f);
+    model = glm::scale(model, glm::vec3{1.0f/32.0f});
     glm::mat4 view = camera->GetViewMatrix();
     glm::mat4 projection = glm::perspective(glm::radians(60.0f), width / (float) height, 0.1f, 10000.0f);
 
