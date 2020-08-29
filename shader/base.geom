@@ -3,7 +3,7 @@ layout (points) in;
 layout (points, max_vertices = 16) out;
 
 uniform sampler3D volume;
-uniform isampler2D edgeTable;
+uniform usampler1D edgeTable;
 uniform isampler2D triTable;
 
 uniform vec3 volume_dimensions;
@@ -61,6 +61,7 @@ void main() {
 
     // sample the volume at each corner and store the result in the corner sample array
     // compute the index of the cube that will define which triangles will be generated
+    // this works already
     for(int i = 0; i < 8; i++){
         corner_sample[i] = sample_volume(gl_in[0].gl_Position + corner[i]);
         if(corner_sample[i] < iso_value) cube_index |= k;
@@ -70,7 +71,7 @@ void main() {
 
     // check which edges will be cut by looking up in the edge table texture
     // TODO texture access needs to be checked!
-    int cut_edges = texture(edgeTable, vec2(cube_index,1)).a;
+    uint cut_edges = texture(edgeTable, cube_index).r;
 
     if(cut_edges != 0 && cut_edges != 255){
         gl_Position = mvp * gl_in[0].gl_Position;
@@ -80,11 +81,12 @@ void main() {
     vec4[12] vertices;
     k = 1;
 
+    /*
     // for all possible vertices that could be generated calculate the new interpolated vertex position if the vertex will be used
     for(int i = 0; i < 12; ++i){
         if((cut_edges & k) == k){
-            int a_index = edge_vertex_mapping[k][0];
-            int b_index = edge_vertex_mapping[k][1];
+            int a_index = edge_vertex_mapping[i][0];
+            int b_index = edge_vertex_mapping[i][1];
             vec4 a = gl_in[0].gl_Position + corner[a_index];
             vec4 b = gl_in[0].gl_Position + corner[b_index];
             float value_a = corner_sample[a_index];
@@ -94,18 +96,22 @@ void main() {
         k = k << 1;
     }
 
+
     // chech which vertices will form a triangle by looking up in the triangle table
     // generate the triangles
     // TODO texture access needs to be checked!
     for(int i = 0; texture(triTable, vec2(cube_index, i)).a != -1; i += 3){
         gl_Position = mvp * vertices[texture(triTable, vec2(cube_index, i)).a];
         EmitVertex();
+        EndPrimitive();
         gl_Position = mvp * vertices[texture(triTable, vec2(cube_index, i + 1)).a];
         EmitVertex();
+        EndPrimitive();
         gl_Position = mvp * vertices[texture(triTable, vec2(cube_index, i + 2)).a];
         EmitVertex();
-        EndPrimitive;
+        EndPrimitive();
     }
+    */
 
     EndPrimitive();
 }

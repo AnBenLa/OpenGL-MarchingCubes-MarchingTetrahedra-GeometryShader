@@ -24,6 +24,7 @@ bool wireframe = false, first_mouse = false, collapse_edge = false, show_model =
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
 GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id;
 GLFWwindow *window;
+Shader* normal_shader;
 
 int edgeTable[256]={
         0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
@@ -339,12 +340,12 @@ int main(int argc, const char *argv[]) {
 
     initialize();
 
-    Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag", "../shader/base.geom"};
+    normal_shader = new Shader{"../shader/base.vert", "../shader/base.frag", "../shader/base.geom"};
     //Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag"};
-    glUseProgram(normal_shader.get_program());
+    glUseProgram(normal_shader->get_program());
 
     unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
-    int dimensions_location = glGetUniformLocation(normal_shader.get_program(), "volume_dimensions");
+    int dimensions_location = glGetUniformLocation(normal_shader->get_program(), "volume_dimensions");
     glUniform3f(dimensions_location, x_dim, y_dim, z_dim);
 
 
@@ -367,7 +368,7 @@ int main(int argc, const char *argv[]) {
         last_frame_time = currentFrame;
         glfwGetFramebufferSize(window, &width, &height);
 
-        uploadMatrices(normal_shader.get_program());
+        uploadMatrices(normal_shader->get_program());
 
         // specify the background color
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -403,21 +404,26 @@ void generate_table_textures(){
     // generate texture for the edge table since it is to large to be stored in the geometry shader itself
     glGenTextures(1, &edge_table_texture_id);
     glActiveTexture(GL_TEXTURE1);
-    glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, edge_table_texture_id);
+    glEnable(GL_TEXTURE_1D);
+    glBindTexture(GL_TEXTURE_1D, edge_table_texture_id);
+    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "edgeTable"), 0);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_BASE_LEVEL, 0);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0);
 
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_ALPHA16I_EXT, 256, 1, 0, GL_ALPHA_INTEGER_EXT, GL_INT, &edgeTable);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage1D( GL_TEXTURE_1D, 0, GL_RG16UI, 256, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, &edgeTable);
 
     // generate texture for the triangle table since it is to large to be stored in the geometry shader itself
     glGenTextures(1, &triangle_table_texture_id);
     glActiveTexture(GL_TEXTURE2);
+    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "triTable"), 0);
     glEnable(GL_TEXTURE_2D);
     glBindTexture(GL_TEXTURE_2D, triangle_table_texture_id);
 
@@ -456,6 +462,8 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
 
     glGenTextures(1, &volume_texture_id);
     glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, volume_texture_id);
+    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "volume"), 0);
 
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP);
