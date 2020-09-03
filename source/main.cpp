@@ -26,7 +26,7 @@ GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id;
 GLFWwindow *window;
 Shader* normal_shader;
 
-int edgeTable[256]={
+GLint edgeTable [256] = {
         0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
         0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
         0x190, 0x99 , 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -60,7 +60,7 @@ int edgeTable[256]={
         0xf00, 0xe09, 0xd03, 0xc0a, 0xb06, 0xa0f, 0x905, 0x80c,
         0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0   };
 
-int triTable[256][16] =
+GLint triTable[256][16] =
         {{-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
          {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
          {0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -348,8 +348,9 @@ int main(int argc, const char *argv[]) {
     int dimensions_location = glGetUniformLocation(normal_shader->get_program(), "volume_dimensions");
     glUniform3f(dimensions_location, x_dim, y_dim, z_dim);
 
+    load_raw_volume("../volume_files/bucky.raw", x_dim, y_dim, z_dim);
 
-    load_raw_volume("../volume_files/bucky.raw", x_dim, y_dim,z_dim);
+    generate_table_textures();
 
     std::vector<glm::vec3> points = compute_voxel_points(x_dim, y_dim, z_dim);
 
@@ -374,6 +375,16 @@ int main(int argc, const char *argv[]) {
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         // clear color, depth and stencil buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        glActiveTexture(GL_TEXTURE0 + 0);
+        glBindTexture(GL_TEXTURE_3D, volume_texture_id);
+
+        glActiveTexture(GL_TEXTURE0 + 1);
+        glBindTexture(GL_TEXTURE_2D, edge_table_texture_id);
+
+        glActiveTexture(GL_TEXTURE0 + 2);
+        glBindTexture(GL_TEXTURE_2D, triangle_table_texture_id);
+
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glEnableVertexAttribArray(0);
@@ -403,28 +414,24 @@ int main(int argc, const char *argv[]) {
 void generate_table_textures(){
     // generate texture for the edge table since it is to large to be stored in the geometry shader itself
     glGenTextures(1, &edge_table_texture_id);
-    glActiveTexture(GL_TEXTURE1);
-    glEnable(GL_TEXTURE_1D);
-    glBindTexture(GL_TEXTURE_1D, edge_table_texture_id);
-    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "edgeTable"), 0);
 
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_BASE_LEVEL, 0);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAX_LEVEL, 0);
+    glBindTexture(GL_TEXTURE_2D, edge_table_texture_id);
+    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "edgeTable"), 1);
 
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-    glTexImage1D( GL_TEXTURE_1D, 0, GL_RG16UI, 256, 0, GL_RG_INTEGER, GL_UNSIGNED_INT, &edgeTable);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I , 256, 1, 0, GL_RED_INTEGER, GL_INT, &edgeTable);
 
     // generate texture for the triangle table since it is to large to be stored in the geometry shader itself
     glGenTextures(1, &triangle_table_texture_id);
-    glActiveTexture(GL_TEXTURE2);
-    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "triTable"), 0);
-    glEnable(GL_TEXTURE_2D);
+    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "triTable"), 2);
+
     glBindTexture(GL_TEXTURE_2D, triangle_table_texture_id);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -434,7 +441,7 @@ void generate_table_textures(){
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_ALPHA16I_EXT, 256, 16, 0, GL_ALPHA_INTEGER_EXT, GL_INT, &triTable);
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I, 256, 16, 0, GL_RED_INTEGER, GL_INT, &triTable);
 }
 
 std::vector<glm::vec3> compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim){
@@ -458,11 +465,10 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
 
     GLubyte* volume = new GLubyte[x_dim * y_dim * z_dim];
     fread(volume, sizeof(GLubyte), x_dim * y_dim * z_dim, file);
-    fclose(file);
+    fclose(file); 
 
     glGenTextures(1, &volume_texture_id);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, volume_texture_id);
+    glBindTexture(GL_TEXTURE_3D, volume_texture_id);
     glUniform1i(glGetUniformLocation(normal_shader->get_program(), "volume"), 0);
 
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP);

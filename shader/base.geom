@@ -1,10 +1,10 @@
 #version 430
 layout (points) in;
-layout (points, max_vertices = 16) out;
+layout (triangle_strip, max_vertices = 16) out;
 
-uniform sampler3D volume;
-uniform usampler1D edgeTable;
-uniform isampler2D triTable;
+layout(binding=0) uniform sampler3D volume;
+layout(binding=1) uniform isampler2D edgeTable;
+layout(binding=2) uniform isampler2D triTable;
 
 uniform vec3 volume_dimensions;
 
@@ -48,7 +48,7 @@ float sample_volume(vec4 position){
 }
 
 vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float value_b){
-    return a + (iso_value - value_a)*(b - a)/(value_b - value_a);
+    return vec4((a + (iso_value - value_a)*(b - a)/(value_b - value_a)).xyz, 1);
 }
 
 void main() {
@@ -69,19 +69,27 @@ void main() {
         k = k << 1;
     }
 
-    // check which edges will be cut by looking up in the edge table texture
-    // TODO texture access needs to be checked!
-    uint cut_edges = texture(edgeTable, cube_index).r;
+    // working!
+    int cut_edges = texelFetch(edgeTable, ivec2(1, cube_index), 0).r;
+    //int abc =  texelFetch(triTable, ivec2(0, cube_index), 0).r;
 
-    if(cut_edges != 0 && cut_edges != 255){
+
+    if(cut_edges > 0){
         gl_Position = mvp * gl_in[0].gl_Position;
         EmitVertex();
+        gl_Position = mvp * (gl_in[0].gl_Position + corner[0]);
+        EmitVertex();
+        gl_Position = mvp * (gl_in[0].gl_Position + corner[1]);
+        EmitVertex();
+        EndPrimitive();
     }
+
+
 
     vec4[12] vertices;
     k = 1;
 
-    /*
+
     // for all possible vertices that could be generated calculate the new interpolated vertex position if the vertex will be used
     for(int i = 0; i < 12; ++i){
         if((cut_edges & k) == k){
@@ -100,18 +108,14 @@ void main() {
     // chech which vertices will form a triangle by looking up in the triangle table
     // generate the triangles
     // TODO texture access needs to be checked!
-    for(int i = 0; texture(triTable, vec2(cube_index, i)).a != -1; i += 3){
-        gl_Position = mvp * vertices[texture(triTable, vec2(cube_index, i)).a];
-        EmitVertex();
-        EndPrimitive();
-        gl_Position = mvp * vertices[texture(triTable, vec2(cube_index, i + 1)).a];
-        EmitVertex();
-        EndPrimitive();
-        gl_Position = mvp * vertices[texture(triTable, vec2(cube_index, i + 2)).a];
-        EmitVertex();
-        EndPrimitive();
+    for(int i = 0; texelFetch(triTable, ivec2(i, cube_index), 0).r != -1; i += 3){
+        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i, cube_index), 0).r];
+        //EmitVertex();
+        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i + 1, cube_index), 0).r];
+       // EmitVertex();
+        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i + 2, cube_index), 0).r];
+       // EmitVertex();
+       // EndPrimitive();
+        break;
     }
-    */
-
-    EndPrimitive();
 }
