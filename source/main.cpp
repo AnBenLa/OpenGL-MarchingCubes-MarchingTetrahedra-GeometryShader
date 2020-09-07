@@ -391,7 +391,6 @@ int main(int argc, const char *argv[]) {
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, GLsizei (3 * sizeof(float)), (GLvoid *) 0);
         glDrawArrays(GL_POINTS, 0, points.size());
 
-
         draw_imgui_windows();
 
         glfwPollEvents();
@@ -414,7 +413,8 @@ int main(int argc, const char *argv[]) {
 void generate_table_textures(){
     // generate texture for the edge table since it is to large to be stored in the geometry shader itself
     glGenTextures(1, &edge_table_texture_id);
-
+    glActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE_2D);
 
     glBindTexture(GL_TEXTURE_2D, edge_table_texture_id);
     glUniform1i(glGetUniformLocation(normal_shader->get_program(), "edgeTable"), 1);
@@ -430,9 +430,11 @@ void generate_table_textures(){
 
     // generate texture for the triangle table since it is to large to be stored in the geometry shader itself
     glGenTextures(1, &triangle_table_texture_id);
-    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "triTable"), 2);
+    glActiveTexture(GL_TEXTURE2);
+    glEnable(GL_TEXTURE_2D);
 
     glBindTexture(GL_TEXTURE_2D, triangle_table_texture_id);
+    glUniform1i(glGetUniformLocation(normal_shader->get_program(), "triTable"), 2);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
