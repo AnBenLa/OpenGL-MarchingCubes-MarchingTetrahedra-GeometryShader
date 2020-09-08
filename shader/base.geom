@@ -17,6 +17,7 @@ vec4(0,0,1,0),
 vec4(1,0,1,0),
 vec4(1,0,0,0),
 vec4(0,0,0,0),
+
 vec4(0,1,1,0),
 vec4(1,1,1,0),
 vec4(1,1,0,0),
@@ -70,11 +71,10 @@ void main() {
     }
 
     // working!
-    int cut_edges = texelFetch(edgeTable, ivec2(1, cube_index), 0).r;
+    int cut_edges = texelFetch(edgeTable, ivec2(cube_index,0), 0).r;
     //int abc =  texelFetch(triTable, ivec2(0, cube_index), 0).r;
 
-
-    if(cut_edges > 0){
+    /*if(cut_edges > 0){
         gl_Position = mvp * gl_in[0].gl_Position;
         EmitVertex();
         gl_Position = mvp * (gl_in[0].gl_Position + corner[0]);
@@ -82,13 +82,14 @@ void main() {
         gl_Position = mvp * (gl_in[0].gl_Position + corner[1]);
         EmitVertex();
         EndPrimitive();
-    }
-
-
+    }*/
 
     vec4[12] vertices;
     k = 1;
 
+    //in case the whole cube is outside the volume
+    if (cut_edges == 0)
+        return;
 
     // for all possible vertices that could be generated calculate the new interpolated vertex position if the vertex will be used
     for(int i = 0; i < 12; ++i){
@@ -104,18 +105,20 @@ void main() {
         k = k << 1;
     }
 
-
     // chech which vertices will form a triangle by looking up in the triangle table
     // generate the triangles
     // TODO texture access needs to be checked!
     for(int i = 0; texelFetch(triTable, ivec2(i, cube_index), 0).r != -1; i += 3){
         gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i, cube_index), 0).r];
-        //EmitVertex();
-        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i + 1, cube_index), 0).r];
-       // EmitVertex();
-        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i + 2, cube_index), 0).r];
-       // EmitVertex();
-       // EndPrimitive();
+        EmitVertex();
+        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i+1,cube_index), 0).r];
+        EmitVertex();
+        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i+2,cube_index), 0).r];
+        EmitVertex();
+        EndPrimitive();
+        /*if(i > 400){//240){
+            break;
+        }*/
         break;
     }
 }
