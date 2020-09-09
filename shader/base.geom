@@ -2,6 +2,13 @@
 layout (points) in;
 layout (triangle_strip, max_vertices = 16) out;
 
+out fData
+{
+    vec3 position;
+    vec3 normal;
+    vec4 color;
+}frag; 
+
 layout(binding=0) uniform sampler3D volume;
 layout(binding=1) uniform isampler2D edgeTable;
 layout(binding=2) uniform isampler2D triTable;
@@ -108,17 +115,30 @@ void main() {
     // chech which vertices will form a triangle by looking up in the triangle table
     // generate the triangles
     // TODO texture access needs to be checked!
+
     for(int i = 0; texelFetch(triTable, ivec2(i, cube_index), 0).r != -1; i += 3){
-        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i, cube_index), 0).r];
+        vec4 vert_a = vertices[texelFetch(triTable, ivec2(i, cube_index), 0).r];
+        vec4 vert_b = vertices[texelFetch(triTable, ivec2(i+1,cube_index), 0).r];
+        vec4 vert_c = vertices[texelFetch(triTable, ivec2(i+2,cube_index), 0).r];
+
+        vec3 a = vert_a.xyz - vert_b.xyz;
+        vec3 b = vert_c.xyz - vert_b.xyz;
+        frag.normal = normalize(cross(a, b));
+
+        gl_Position = mvp * vert_a;
+        frag.position = gl_Position.xyz;
+        frag.color = vec4(1.0,0,0,1.0);
         EmitVertex();
-        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i+1,cube_index), 0).r];
+
+        gl_Position = mvp * vert_b;
+        frag.position = gl_Position.xyz;
+        frag.color = vec4(0,1.0,0,1.0);
         EmitVertex();
-        gl_Position = mvp * vertices[texelFetch(triTable, ivec2(i+2,cube_index), 0).r];
+
+        gl_Position = mvp * vert_c;
+        frag.position = gl_Position.xyz;
+        frag.color = vec4(0,0,1.0,1.0);
         EmitVertex();
         EndPrimitive();
-        /*if(i > 400){//240){
-            break;
-        }*/
-        break;
     }
 }

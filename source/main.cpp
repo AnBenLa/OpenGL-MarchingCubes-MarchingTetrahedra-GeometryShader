@@ -336,6 +336,8 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
 
 std::vector<glm::vec3> compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim);
 
+void upload_lights_and_position(GLuint shader);
+
 int main(int argc, const char *argv[]) {
 
     initialize();
@@ -353,6 +355,8 @@ int main(int argc, const char *argv[]) {
     generate_table_textures();
 
     std::vector<glm::vec3> points = compute_voxel_points(x_dim, y_dim, z_dim);
+
+    upload_lights_and_position(normal_shader->get_program());
 
     GLuint VBO, VAO;
     glGenVertexArrays(1, &VAO);
@@ -483,6 +487,22 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
     glTexImage3D(GL_TEXTURE_3D, 0, GL_INTENSITY, x_dim, y_dim, z_dim, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, volume);
     delete[] volume;
 };
+
+void upload_lights_and_position(GLuint shader){
+    int light_position_location = glGetUniformLocation(shader, "light_position");
+    int light_specular_color_location = glGetUniformLocation(shader, "light_specular_color");
+    int light_diffuse_color_location = glGetUniformLocation(shader, "light_diffuse_color");
+    int ambient_light_color_location = glGetUniformLocation(shader, "ambient_light_color");
+    int camera_position_location = glGetUniformLocation(shader, "camera_position");
+    int shininess_location = glGetUniformLocation(shader, "shininess");
+
+    glUniform3f(light_position_location, 0.0, 0.0, 10.0f);
+    glUniform3f(light_specular_color_location, 255.0f / 255.0f, 255.0f / 255.0f, 160.0f / 255.0f);
+    glUniform3f(light_diffuse_color_location, 255.0f / 255.0f, 255.0f / 255.0f, 160.0f / 255.0f);
+    glUniform3f(ambient_light_color_location, 0.1, 0.1, 0.1);
+    glUniform3f(camera_position_location, 0,0,4);
+    glUniform1f(shininess_location, 30.0f);
+}
 
 void draw_imgui_windows(){
         ImGui_ImplOpenGL3_NewFrame();
