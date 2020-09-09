@@ -443,7 +443,7 @@ void generate_table_textures(){
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I, 256, 16, 0, GL_RED_INTEGER, GL_INT, &triTable);
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I, 16, 256, 0, GL_RED_INTEGER, GL_INT, &triTable);
 }
 
 std::vector<glm::vec3> compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim){
