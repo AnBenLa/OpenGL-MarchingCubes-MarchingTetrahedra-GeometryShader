@@ -19,7 +19,7 @@
 #include "../include/camera.h"
 
 int width = 800, height = 600;
-float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f;;
+float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f, current_iso_value = 0.2;
 bool wireframe = false, first_mouse = false, collapse_edge = false, show_model = true;
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
 GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id;
@@ -336,6 +336,8 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
 
 std::vector<glm::vec3> compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim);
 
+void upload_iso_value(GLuint shader);
+
 void upload_lights_and_position(GLuint shader);
 
 int main(int argc, const char *argv[]) {
@@ -374,6 +376,7 @@ int main(int argc, const char *argv[]) {
         glfwGetFramebufferSize(window, &width, &height);
 
         uploadMatrices(normal_shader->get_program());
+        upload_iso_value(normal_shader->get_program());
 
         // specify the background color
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -412,6 +415,11 @@ int main(int argc, const char *argv[]) {
     // finish glfw
     glfwTerminate();
     return 0;
+}
+
+void upload_iso_value(GLuint shader){
+    int iso_value_location = glGetUniformLocation(shader, "iso_value");
+    glUniform1f(iso_value_location, current_iso_value);
 }
 
 void generate_table_textures(){
@@ -511,6 +519,7 @@ void draw_imgui_windows(){
         ImGui::SetNextWindowSize({350, 100});
         ImGui::Begin("Statistics");
         ImGui::Text("Position: %f, %f, %f", camera->Position.x, camera->Position.y, camera->Position.z);
+        ImGui::Text("Current Iso-value: %f", current_iso_value);
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -531,6 +540,16 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             wireframe = true;
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         }
+    }
+
+    if (key == GLFW_KEY_KP_ADD && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+        current_iso_value += 0.01f;
+    }
+
+    if (key == GLFW_KEY_KP_SUBTRACT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+        current_iso_value -= 0.01f;
+        if(current_iso_value < 0.0f)
+            current_iso_value = 0.0f;
     }
 
     if (key == GLFW_KEY_W) {

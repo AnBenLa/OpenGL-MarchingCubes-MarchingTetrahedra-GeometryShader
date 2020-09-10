@@ -14,7 +14,7 @@ layout(binding=1) uniform isampler2D edgeTable;
 layout(binding=2) uniform isampler2D triTable;
 
 uniform vec3 volume_dimensions;
-
+uniform float iso_value;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
@@ -62,7 +62,6 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
 void main() {
     mat4 mvp = projection * view * model;
     int cube_index = 0;
-    float iso_value = 0.2f;
 
     int k = 1;
     float[8] corner_sample;
