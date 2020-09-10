@@ -15,6 +15,8 @@ layout(binding=2) uniform isampler2D triTable;
 
 uniform vec3 volume_dimensions;
 uniform float iso_value;
+uniform float voxel_size;
+
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
@@ -65,6 +67,9 @@ void main() {
 
     int k = 1;
     float[8] corner_sample;
+
+    for(int i = 0; i < 8; ++i)
+        corner[i] = voxel_size * corner[i];
 
     // sample the volume at each corner and store the result in the corner sample array
     // compute the index of the cube that will define which triangles will be generated

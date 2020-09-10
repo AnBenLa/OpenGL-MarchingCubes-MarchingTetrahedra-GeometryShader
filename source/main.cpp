@@ -19,10 +19,12 @@
 #include "../include/camera.h"
 
 int width = 800, height = 600;
-float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f, current_iso_value = 0.2;
-bool wireframe = false, first_mouse = false, collapse_edge = false, show_model = true;
+float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f, current_iso_value = 0.2, current_voxel_size = 1.0f;
+unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
+bool wireframe = false, first_mouse = false;
+std::vector<glm::vec3> points;
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
-GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id;
+GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id, VBO, VAO;;
 GLFWwindow *window;
 Shader* normal_shader;
 
@@ -334,9 +336,9 @@ void generate_table_textures();
 
 void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned short y_dim, unsigned short z_dim);
 
-std::vector<glm::vec3> compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim);
+void compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim, float voxel_size);
 
-void upload_iso_value(GLuint shader);
+void upload_iso_value_and_voxel_size(GLuint shader);
 
 void upload_lights_and_position(GLuint shader);
 
@@ -348,7 +350,7 @@ int main(int argc, const char *argv[]) {
     //Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag"};
     glUseProgram(normal_shader->get_program());
 
-    unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
+
     int dimensions_location = glGetUniformLocation(normal_shader->get_program(), "volume_dimensions");
     glUniform3f(dimensions_location, x_dim, y_dim, z_dim);
 
@@ -356,17 +358,9 @@ int main(int argc, const char *argv[]) {
 
     generate_table_textures();
 
-    std::vector<glm::vec3> points = compute_voxel_points(x_dim, y_dim, z_dim);
+    compute_voxel_points(x_dim, y_dim, z_dim, current_voxel_size);
 
     upload_lights_and_position(normal_shader->get_program());
-
-    GLuint VBO, VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-    glGenBuffers(1,&VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * points.size(), points.data(), GL_STATIC_DRAW);
-
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
@@ -376,7 +370,7 @@ int main(int argc, const char *argv[]) {
         glfwGetFramebufferSize(window, &width, &height);
 
         uploadMatrices(normal_shader->get_program());
-        upload_iso_value(normal_shader->get_program());
+        upload_iso_value_and_voxel_size(normal_shader->get_program());
 
         // specify the background color
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -417,9 +411,11 @@ int main(int argc, const char *argv[]) {
     return 0;
 }
 
-void upload_iso_value(GLuint shader){
+void upload_iso_value_and_voxel_size(GLuint shader){
     int iso_value_location = glGetUniformLocation(shader, "iso_value");
+    int voxel_size_location = glGetUniformLocation(shader, "voxel_size");
     glUniform1f(iso_value_location, current_iso_value);
+    glUniform1f(voxel_size_location, current_voxel_size);
 }
 
 void generate_table_textures(){
@@ -458,16 +454,21 @@ void generate_table_textures(){
     glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I, 16, 256, 0, GL_RED_INTEGER, GL_INT, &triTable);
 }
 
-std::vector<glm::vec3> compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim){
-    std::vector<glm::vec3> points;
-    for(int i = 0; i < x_dim; ++i){
-        for(int j = 0; j < y_dim; ++j){
-            for(int k = 0; k < z_dim; ++k){
-                points.emplace_back(i,j,k);
+void compute_voxel_points(unsigned short x_dim, unsigned short y_dim, unsigned short z_dim, float voxel_size){
+    points.clear();
+    for(int i = 0; i < ((int)1.0f/voxel_size) * x_dim; ++i){
+        for(int j = 0; j < ((int)1.0f/voxel_size) * y_dim; ++j){
+            for(int k = 0; k < ((int)1.0f/voxel_size) * z_dim; ++k){
+                points.emplace_back(i*voxel_size,j*voxel_size,k*voxel_size);
             }
         }
     }
-    return points;
+
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+    glGenBuffers(1,&VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 * points.size(), points.data(), GL_STATIC_DRAW);
 }
 
 void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned short y_dim, unsigned short z_dim){
@@ -520,6 +521,7 @@ void draw_imgui_windows(){
         ImGui::Begin("Statistics");
         ImGui::Text("Position: %f, %f, %f", camera->Position.x, camera->Position.y, camera->Position.z);
         ImGui::Text("Current Iso-value: %f", current_iso_value);
+        ImGui::Text("Current Voxel-size: %f", current_voxel_size);
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -544,6 +546,18 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_KP_ADD && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         current_iso_value += 0.01f;
+    }
+
+    if (key == GLFW_KEY_KP_MULTIPLY && action == GLFW_PRESS) {
+        current_voxel_size += 0.5;
+        compute_voxel_points(x_dim, y_dim, z_dim, current_voxel_size);
+    }
+
+    if (key == GLFW_KEY_KP_DIVIDE && action == GLFW_PRESS) {
+        current_voxel_size -= 0.5;
+        if(current_voxel_size <= 0.001f)
+            current_voxel_size = 1.0f;
+        compute_voxel_points(x_dim, y_dim, z_dim, current_voxel_size);
     }
 
     if (key == GLFW_KEY_KP_SUBTRACT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
