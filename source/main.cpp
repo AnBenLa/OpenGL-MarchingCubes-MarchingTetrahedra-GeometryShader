@@ -18,7 +18,7 @@
 #include "../include/shader.h"
 #include "../include/camera.h"
 
-int width = 800, height = 600;
+int width = 800, height = 600, current_mode = 1;
 float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f, current_iso_value = 0.2, current_voxel_size = 1.0f;
 unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
 bool wireframe = false, first_mouse = false;
@@ -414,6 +414,8 @@ int main(int argc, const char *argv[]) {
 void upload_iso_value_and_voxel_size(GLuint shader){
     int iso_value_location = glGetUniformLocation(shader, "iso_value");
     int voxel_size_location = glGetUniformLocation(shader, "voxel_size");
+    int mode_location = glGetUniformLocation(shader, "mode");
+    glUniform1i(mode_location, current_mode);
     glUniform1f(iso_value_location, current_iso_value);
     glUniform1f(voxel_size_location, current_voxel_size);
 }
@@ -522,6 +524,10 @@ void draw_imgui_windows(){
         ImGui::Text("Position: %f, %f, %f", camera->Position.x, camera->Position.y, camera->Position.z);
         ImGui::Text("Current Iso-value: %f", current_iso_value);
         ImGui::Text("Current Voxel-size: %f", current_voxel_size);
+        if(current_mode == 1)
+            ImGui::Text("Current mode: Marching Cubes");
+        else if(current_mode == 2)
+            ImGui::Text("Current mode: Marching Tetracubes");
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -542,6 +548,11 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             wireframe = true;
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         }
+    }
+
+
+    if (key == GLFW_KEY_M && action == GLFW_PRESS) {
+        current_mode = (current_mode % 2) + 1;
     }
 
     if (key == GLFW_KEY_KP_ADD && (action == GLFW_PRESS || action == GLFW_REPEAT)) {

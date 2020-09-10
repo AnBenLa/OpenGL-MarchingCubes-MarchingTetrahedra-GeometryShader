@@ -16,6 +16,8 @@ layout(binding=2) uniform isampler2D triTable;
 uniform vec3 volume_dimensions;
 uniform float iso_value;
 uniform float voxel_size;
+// 1 if marching cubes, 2 if marching tetrahedra
+uniform int mode;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -61,15 +63,12 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
     return vec4((a + (iso_value - value_a)*(b - a)/(value_b - value_a)).xyz, 1);
 }
 
-void main() {
+void marching_cubes(){
+    float[8] corner_sample;
     mat4 mvp = projection * view * model;
     int cube_index = 0;
 
     int k = 1;
-    float[8] corner_sample;
-
-    for(int i = 0; i < 8; ++i)
-        corner[i] = voxel_size * corner[i];
 
     // sample the volume at each corner and store the result in the corner sample array
     // compute the index of the cube that will define which triangles will be generated
@@ -83,24 +82,13 @@ void main() {
 
     // working!
     int cut_edges = texelFetch(edgeTable, ivec2(cube_index,0), 0).r;
-    //int abc =  texelFetch(triTable, ivec2(0, cube_index), 0).r;
-
-    /*if(cut_edges > 0){
-        gl_Position = mvp * gl_in[0].gl_Position;
-        EmitVertex();
-        gl_Position = mvp * (gl_in[0].gl_Position + corner[0]);
-        EmitVertex();
-        gl_Position = mvp * (gl_in[0].gl_Position + corner[1]);
-        EmitVertex();
-        EndPrimitive();
-    }*/
 
     vec4[12] vertices;
     k = 1;
 
     //in case the whole cube is outside the volume
     if (cut_edges == 0)
-        return;
+    return;
 
     // for all possible vertices that could be generated calculate the new interpolated vertex position if the vertex will be used
     for(int i = 0; i < 12; ++i){
@@ -118,8 +106,6 @@ void main() {
 
     // chech which vertices will form a triangle by looking up in the triangle table
     // generate the triangles
-    // TODO texture access needs to be checked!
-
     for(int i = 0; texelFetch(triTable, ivec2(i, cube_index), 0).r != -1; i += 3){
         vec4 vert_a = vertices[texelFetch(triTable, ivec2(i, cube_index), 0).r];
         vec4 vert_b = vertices[texelFetch(triTable, ivec2(i+1,cube_index), 0).r];
@@ -136,13 +122,28 @@ void main() {
 
         gl_Position = mvp * vert_b;
         frag.position = gl_Position.xyz;
-        frag.color = vec4(0,1.0,0,1.0);
+        frag.color = vec4(1.0,0.0,0,1.0);
         EmitVertex();
 
         gl_Position = mvp * vert_c;
         frag.position = gl_Position.xyz;
-        frag.color = vec4(0,0,1.0,1.0);
+        frag.color = vec4(1,0,0.0,1.0);
         EmitVertex();
         EndPrimitive();
     }
+}
+
+void marching_tetracubes(){
+
+}
+
+void main() {
+    // scale the voxels according to the voxel size
+    for(int i = 0; i < 8; ++i)
+        corner[i] = voxel_size * corner[i];
+
+    if(mode == 1)
+        marching_cubes();
+    else if(mode == 2)
+        marching_tetracubes();
 }
