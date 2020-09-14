@@ -259,34 +259,41 @@ void marching_tetracubes(){
 
             gl_Position = mvp * vert_a;
             frag.position = gl_Position.xyz;
+
+            // if the edge is not correct the vertex will be green instead of red
             if ((vertex_edge_0_a_value < iso_value && vertex_edge_0_b_value < iso_value) ||
             vertex_edge_0_a_value > iso_value && vertex_edge_0_b_value > iso_value){
                 frag.color = vec4(0, 1.0, 0, 1.0);
             } else {
                 frag.color = vec4(1.0, 0, 0, 1.0);
             }
+
             EmitVertex();
 
             gl_Position = mvp * vert_b;
             frag.position = gl_Position.xyz;
 
+            // if the edge is not correct the vertex will be green instead of red
             if ((vertex_edge_1_a_value < iso_value && vertex_edge_1_b_value < iso_value) ||
             vertex_edge_1_a_value > iso_value && vertex_edge_1_b_value > iso_value){
                 frag.color = vec4(0, 1.0, 0, 1.0);
             } else {
                 frag.color = vec4(1.0, 0, 0, 1.0);
             }
+
             EmitVertex();
 
             gl_Position = mvp * vert_c;
             frag.position = gl_Position.xyz;
 
+            // if the edge is not correct the vertex will be green instead of red
             if ((vertex_edge_2_a_value < iso_value && vertex_edge_2_b_value < iso_value) ||
             vertex_edge_2_a_value > iso_value && vertex_edge_2_b_value > iso_value){
                 frag.color = vec4(0, 1.0, 0, 1.0);
             } else {
                 frag.color = vec4(1.0, 0, 0, 1.0);
             }
+
             EmitVertex();
             EndPrimitive();
         }
