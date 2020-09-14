@@ -31,5 +31,4 @@ void main(){
     vec3 specular = attenuation_factor * light_specular_color * frag.color.rgb * pow(max(dot(halfvector, frag.normal), 0.0),shininess);
 
     out_color = vec4(clamp(ambient+(diffuse+specular),0.0,1.0), 1.0);
-    out_color = frag.color;
 }
