@@ -1,6 +1,6 @@
 #version 430
 layout (points) in;
-layout (triangle_strip, max_vertices = 100) out;
+layout (triangle_strip, max_vertices = 40) out;
 
 out fData
 {

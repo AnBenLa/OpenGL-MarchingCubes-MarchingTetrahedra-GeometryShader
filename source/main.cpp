@@ -21,7 +21,7 @@
 int width = 800, height = 600, current_mode = 1;
 float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f, current_iso_value = 0.2, current_voxel_size = 1.0f;
 unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
-bool wireframe = false, first_mouse = false;
+bool wireframe = false, first_mouse = false, show_voxels = false;
 std::vector<glm::vec3> points;
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
 GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id, VBO, VAO;;
@@ -397,9 +397,11 @@ int main(int argc, const char *argv[]) {
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, GLsizei (3 * sizeof(float)), (GLvoid *) 0);
         glDrawArrays(GL_POINTS, 0, points.size());
 
-        uploadMatrices(cube_shader->get_program());
-        upload_iso_value_and_voxel_size(cube_shader->get_program());
-        glDrawArrays(GL_POINTS, 0, points.size());
+        if(show_voxels) {
+            uploadMatrices(cube_shader->get_program());
+            upload_iso_value_and_voxel_size(cube_shader->get_program());
+            glDrawArrays(GL_POINTS, 0, points.size());
+        }
 
         draw_imgui_windows();
 
@@ -494,17 +496,7 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
 
     GLubyte* volume = new GLubyte[x_dim * y_dim * z_dim];
     fread(volume, sizeof(GLubyte), x_dim * y_dim * z_dim, file);
-    fclose(file); 
-
-    GLubyte* new_volume = new GLubyte [2 * 2 * 2];
-    new_volume[0] = 0.8f;
-    new_volume[1] = 0.1f;
-    new_volume[2] = 0.1f;
-    new_volume[3] = 0.1f;
-    new_volume[4] = 0.1f;
-    new_volume[5] = 0.1f;
-    new_volume[6] = 0.1f;
-    new_volume[7] = 0.1f;
+    fclose(file);
 
     glGenTextures(1, &volume_texture_id);
     glBindTexture(GL_TEXTURE_3D, volume_texture_id);
@@ -542,7 +534,7 @@ void draw_imgui_windows(){
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-        ImGui::SetNextWindowSize({350, 100});
+        ImGui::SetNextWindowSize({350, 300});
         ImGui::Begin("Statistics");
         ImGui::Text("Position: %f, %f, %f", camera->Position.x, camera->Position.y, camera->Position.z);
         ImGui::Text("Current Iso-value: %f", current_iso_value);
@@ -551,6 +543,11 @@ void draw_imgui_windows(){
             ImGui::Text("Current mode: Marching Cubes");
         else if(current_mode == 2)
             ImGui::Text("Current mode: Marching Tetracubes");
+        if(show_voxels){
+            ImGui::Text("Display Voxel/Tetrahedra: On");
+        } else {
+            ImGui::Text("Display Voxel/Tetrahedra: Off");
+        }
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -576,6 +573,10 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_M && action == GLFW_PRESS) {
         current_mode = (current_mode % 2) + 1;
+    }
+
+    if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+        show_voxels = !show_voxels;
     }
 
     if (key == GLFW_KEY_P && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
