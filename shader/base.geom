@@ -233,7 +233,7 @@ void marching_tetracubes(){
 
             vec4 vert_a = interpolate_vertex(iso_value, vertex_edge_0_a, vertex_edge_0_b, vertex_edge_0_a_value, vertex_edge_0_b_value);
             // here the vertex position is assumed to be just the midpoint between the vertex a and b
-            //vert_a = (vertex_edge_0_a + vertex_edge_0_b) / 2.0f;
+            vert_a = (vertex_edge_0_a + vertex_edge_0_b) / 2.0f;
 
             vec4 vertex_edge_1_a = gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_1][0]]];
             vec4 vertex_edge_1_b = gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_1][1]]];
@@ -242,7 +242,7 @@ void marching_tetracubes(){
             float vertex_edge_1_b_value = corner_sample[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_1][1]]];
 
             vec4 vert_b = interpolate_vertex(iso_value, vertex_edge_1_a, vertex_edge_1_b, vertex_edge_1_a_value, vertex_edge_1_b_value);
-            //vert_b = (vertex_edge_1_a + vertex_edge_1_b) / 2.0f;
+            vert_b = (vertex_edge_1_a + vertex_edge_1_b) / 2.0f;
 
             vec4 vertex_edge_2_a = gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_2][0]]];
             vec4 vertex_edge_2_b = gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_2][1]]];
@@ -251,7 +251,7 @@ void marching_tetracubes(){
             float vertex_edge_2_b_value = corner_sample[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_2][1]]];
 
             vec4 vert_c = interpolate_vertex(iso_value, vertex_edge_2_a, vertex_edge_2_b, vertex_edge_2_a_value, vertex_edge_2_b_value);
-            //vert_c = (vertex_edge_2_a + vertex_edge_2_b) / 2.0f;
+            vert_c = (vertex_edge_2_a + vertex_edge_2_b) / 2.0f;
 
             vec3 a = vert_a.xyz - vert_b.xyz;
             vec3 b = vert_c.xyz - vert_b.xyz;
@@ -267,7 +267,7 @@ void marching_tetracubes(){
             } else {
                 frag.color = vec4(1.0, 0, 0, 1.0);
             }
-
+            frag.color = model * vert_a;
             EmitVertex();
 
             gl_Position = mvp * vert_b;
@@ -280,7 +280,7 @@ void marching_tetracubes(){
             } else {
                 frag.color = vec4(1.0, 0, 0, 1.0);
             }
-
+            frag.color = model * vert_b;
             EmitVertex();
 
             gl_Position = mvp * vert_c;
@@ -293,7 +293,7 @@ void marching_tetracubes(){
             } else {
                 frag.color = vec4(1.0, 0, 0, 1.0);
             }
-
+            frag.color = model * vert_c;
             EmitVertex();
             EndPrimitive();
         }

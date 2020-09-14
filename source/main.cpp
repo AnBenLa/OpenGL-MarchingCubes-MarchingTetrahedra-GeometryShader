@@ -27,6 +27,7 @@ Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
 GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id, VBO, VAO;;
 GLFWwindow *window;
 Shader* normal_shader;
+Shader* cube_shader;
 
 GLint edgeTable [256] = {
         0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
@@ -347,12 +348,17 @@ int main(int argc, const char *argv[]) {
     initialize();
 
     normal_shader = new Shader{"../shader/base.vert", "../shader/base.frag", "../shader/base.geom"};
+    cube_shader = new Shader{"../shader/base.vert", "../shader/base.frag", "../shader/cube.geom"};
     //Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag"};
     glUseProgram(normal_shader->get_program());
 
+    bool test = true;
 
-    int dimensions_location = glGetUniformLocation(normal_shader->get_program(), "volume_dimensions");
-    glUniform3f(dimensions_location, x_dim, y_dim, z_dim);
+    if(test){
+        x_dim = 2;
+        y_dim = 2;
+        z_dim = 2;
+    }
 
     load_raw_volume("../volume_files/bucky.raw", x_dim, y_dim, z_dim);
 
@@ -386,10 +392,13 @@ int main(int argc, const char *argv[]) {
         glActiveTexture(GL_TEXTURE0 + 2);
         glBindTexture(GL_TEXTURE_2D, triangle_table_texture_id);
 
-
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, GLsizei (3 * sizeof(float)), (GLvoid *) 0);
+        glDrawArrays(GL_POINTS, 0, points.size());
+
+        uploadMatrices(cube_shader->get_program());
+        upload_iso_value_and_voxel_size(cube_shader->get_program());
         glDrawArrays(GL_POINTS, 0, points.size());
 
         draw_imgui_windows();
@@ -412,12 +421,15 @@ int main(int argc, const char *argv[]) {
 }
 
 void upload_iso_value_and_voxel_size(GLuint shader){
+    glUseProgram(shader);
+    int dimensions_location = glGetUniformLocation(shader, "volume_dimensions");
     int iso_value_location = glGetUniformLocation(shader, "iso_value");
     int voxel_size_location = glGetUniformLocation(shader, "voxel_size");
     int mode_location = glGetUniformLocation(shader, "mode");
     glUniform1i(mode_location, current_mode);
     glUniform1f(iso_value_location, current_iso_value);
     glUniform1f(voxel_size_location, current_voxel_size);
+    glUniform3f(dimensions_location, x_dim, y_dim, z_dim);
 }
 
 void generate_table_textures(){
@@ -484,6 +496,16 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
     fread(volume, sizeof(GLubyte), x_dim * y_dim * z_dim, file);
     fclose(file); 
 
+    GLubyte* new_volume = new GLubyte [2 * 2 * 2];
+    new_volume[0] = 0.8f;
+    new_volume[1] = 0.1f;
+    new_volume[2] = 0.1f;
+    new_volume[3] = 0.1f;
+    new_volume[4] = 0.1f;
+    new_volume[5] = 0.1f;
+    new_volume[6] = 0.1f;
+    new_volume[7] = 0.1f;
+
     glGenTextures(1, &volume_texture_id);
     glBindTexture(GL_TEXTURE_3D, volume_texture_id);
     glUniform1i(glGetUniformLocation(normal_shader->get_program(), "volume"), 0);
@@ -495,11 +517,12 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_INTENSITY, x_dim, y_dim, z_dim, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, volume);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_INTENSITY, x_dim, y_dim, z_dim, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, new_volume);
     delete[] volume;
 };
 
 void upload_lights_and_position(GLuint shader){
+    glUseProgram(shader);
     int light_position_location = glGetUniformLocation(shader, "light_position");
     int light_specular_color_location = glGetUniformLocation(shader, "light_specular_color");
     int light_diffuse_color_location = glGetUniformLocation(shader, "light_diffuse_color");
@@ -624,8 +647,9 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
 
 // this function uploads the model, view and projection matrix to the shader if they are defined in the shader
 void uploadMatrices(GLuint shader) {
+    glUseProgram(shader);
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3{1.0f/32.0f});
+    model = glm::scale(model, glm::vec3{1.0f/((float)x_dim)});
     glm::mat4 view = camera->GetViewMatrix();
     glm::mat4 projection = glm::perspective(glm::radians(60.0f), width / (float) height, 0.1f, 10000.0f);
 
