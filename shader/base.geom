@@ -39,7 +39,7 @@ vec4(0, 1, 0, 0) };
 // i.e. the tetrahedra betweem the cube vertices 7,0,4,6
 int tetrahedrons[6][4] = {
 { 3, 0, 7, 6 },
-{ 7, 0, 4, 6 },
+{ 4, 0, 7, 6 },
 { 0, 4, 5, 6 },
 { 5, 6, 1, 0 },
 { 0, 1, 2, 6 },
@@ -190,6 +190,7 @@ void marching_tetracubes(){
 
     // for each tetrahedron
     for (int i = 0; i < 6; ++i){
+        cube_index = 0;
         int k = 1;
         // check all 4 corners of the current tetrahedron
         for (int j = 0; j < 4; ++j){
@@ -198,7 +199,7 @@ void marching_tetracubes(){
         }
 
         // for the current tetrahedra configuration look up the edges that create a triangle
-        for (int k = 0; tetrahedra_triangle_map[cube_index][k] != -1; k += 3){
+        for (int k = 0; tetrahedra_triangle_map[cube_index][k] != -1 && k < 6; k += 3){
 
             // the edges are indexed according to the image here: https://gyazo.com/8ccbba2864de78ed5195693652b6867b
             // the triangle table was created using this scheme
@@ -228,11 +229,11 @@ void marching_tetracubes(){
 
             // the iso-values of the vertices is the looked up
             float vertex_edge_0_a_value = corner_sample[edge_0_vertex_a_actual_index];
-            float vertex_edge_0_b_value = corner_sample[edge_0_vertex_a_actual_index];
+            float vertex_edge_0_b_value = corner_sample[edge_0_vertex_b_actual_index];
 
             vec4 vert_a = interpolate_vertex(iso_value, vertex_edge_0_a, vertex_edge_0_b, vertex_edge_0_a_value, vertex_edge_0_b_value);
             // here the vertex position is assumed to be just the midpoint between the vertex a and b
-            vert_a = (vertex_edge_0_a + vertex_edge_0_b) / 2.0f;
+            //vert_a = (vertex_edge_0_a + vertex_edge_0_b) / 2.0f;
 
             vec4 vertex_edge_1_a = gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_1][0]]];
             vec4 vertex_edge_1_b = gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_1][1]]];
@@ -241,7 +242,7 @@ void marching_tetracubes(){
             float vertex_edge_1_b_value = corner_sample[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_1][1]]];
 
             vec4 vert_b = interpolate_vertex(iso_value, vertex_edge_1_a, vertex_edge_1_b, vertex_edge_1_a_value, vertex_edge_1_b_value);
-            vert_b = (vertex_edge_1_a + vertex_edge_1_b) / 2.0f;
+            //vert_b = (vertex_edge_1_a + vertex_edge_1_b) / 2.0f;
 
             vec4 vertex_edge_2_a = gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_2][0]]];
             vec4 vertex_edge_2_b = gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_2][1]]];
@@ -250,7 +251,7 @@ void marching_tetracubes(){
             float vertex_edge_2_b_value = corner_sample[tetrahedrons[i][tetrahedra_edge_vertex_mapping[edge_2][1]]];
 
             vec4 vert_c = interpolate_vertex(iso_value, vertex_edge_2_a, vertex_edge_2_b, vertex_edge_2_a_value, vertex_edge_2_b_value);
-            vert_c = (vertex_edge_2_a + vertex_edge_2_b) / 2.0f;
+            //vert_c = (vertex_edge_2_a + vertex_edge_2_b) / 2.0f;
 
             vec3 a = vert_a.xyz - vert_b.xyz;
             vec3 b = vert_c.xyz - vert_b.xyz;
@@ -258,21 +259,37 @@ void marching_tetracubes(){
 
             gl_Position = mvp * vert_a;
             frag.position = gl_Position.xyz;
-            frag.color = vec4(1.0, 0, 0, 1.0);
+            if ((vertex_edge_0_a_value < iso_value && vertex_edge_0_b_value < iso_value) ||
+            vertex_edge_0_a_value > iso_value && vertex_edge_0_b_value > iso_value){
+                frag.color = vec4(0, 1.0, 0, 1.0);
+            } else {
+                frag.color = vec4(1.0, 0, 0, 1.0);
+            }
             EmitVertex();
 
             gl_Position = mvp * vert_b;
             frag.position = gl_Position.xyz;
-            frag.color = vec4(1.0, 0.0, 0, 1.0);
+
+            if ((vertex_edge_1_a_value < iso_value && vertex_edge_1_b_value < iso_value) ||
+            vertex_edge_1_a_value > iso_value && vertex_edge_1_b_value > iso_value){
+                frag.color = vec4(0, 1.0, 0, 1.0);
+            } else {
+                frag.color = vec4(1.0, 0, 0, 1.0);
+            }
             EmitVertex();
 
             gl_Position = mvp * vert_c;
             frag.position = gl_Position.xyz;
-            frag.color = vec4(1, 0, 0.0, 1.0);
+
+            if ((vertex_edge_2_a_value < iso_value && vertex_edge_2_b_value < iso_value) ||
+            vertex_edge_2_a_value > iso_value && vertex_edge_2_b_value > iso_value){
+                frag.color = vec4(0, 1.0, 0, 1.0);
+            } else {
+                frag.color = vec4(1.0, 0, 0, 1.0);
+            }
             EmitVertex();
             EndPrimitive();
         }
-
 
     }
 }

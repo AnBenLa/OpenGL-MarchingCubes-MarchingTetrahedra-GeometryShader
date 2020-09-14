@@ -555,23 +555,23 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         current_mode = (current_mode % 2) + 1;
     }
 
-    if (key == GLFW_KEY_KP_ADD && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+    if (key == GLFW_KEY_P && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         current_iso_value += 0.01f;
     }
 
-    if (key == GLFW_KEY_KP_MULTIPLY && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_O && action == GLFW_PRESS) {
         current_voxel_size += 0.5;
         compute_voxel_points(x_dim, y_dim, z_dim, current_voxel_size);
     }
 
-    if (key == GLFW_KEY_KP_DIVIDE && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_K && action == GLFW_PRESS) {
         current_voxel_size -= 0.5;
         if(current_voxel_size <= 0.001f)
             current_voxel_size = 1.0f;
         compute_voxel_points(x_dim, y_dim, z_dim, current_voxel_size);
     }
 
-    if (key == GLFW_KEY_KP_SUBTRACT && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+    if (key == GLFW_KEY_L && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
         current_iso_value -= 0.01f;
         if(current_iso_value < 0.0f)
             current_iso_value = 0.0f;
