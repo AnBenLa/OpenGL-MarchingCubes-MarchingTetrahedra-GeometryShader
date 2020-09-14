@@ -352,7 +352,7 @@ int main(int argc, const char *argv[]) {
     //Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag"};
     glUseProgram(normal_shader->get_program());
 
-    bool test = true;
+    bool test = false;
 
     if(test){
         x_dim = 2;
@@ -517,7 +517,7 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_INTENSITY, x_dim, y_dim, z_dim, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, new_volume);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_INTENSITY, x_dim, y_dim, z_dim, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, volume);
     delete[] volume;
 };
 

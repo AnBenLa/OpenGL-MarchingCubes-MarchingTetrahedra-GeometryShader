@@ -1,6 +1,6 @@
 #version 430
 layout (points) in;
-layout (line_strip, max_vertices = 24) out;
+layout (line_strip, max_vertices = 72) out;
 
 out fData
 {
@@ -49,6 +49,24 @@ int edge_vertex_mapping[12][2] = {
 { 3, 7 }
 };
 
+int tetrahedrons[6][4] = {
+{ 3, 0, 7, 6 },
+{ 4, 0, 7, 6 },
+{ 0, 4, 5, 6 },
+{ 5, 6, 1, 0 },
+{ 0, 1, 2, 6 },
+{ 0, 3, 2, 6 }
+};
+
+int tetrahedra_edge_vertex_mapping[6][2] = {
+{ 0, 3 },
+{ 0, 1 },
+{ 0, 2 },
+{ 1, 2 },
+{ 1, 3 },
+{ 2, 3 }
+};
+
 // has to be done since the texture coordinates are between 0,0,0 and 1,1,1
 vec3 texture_position(vec4 position){
     return position.xyz/volume_dimensions;
@@ -81,13 +99,25 @@ void main() {
     }
 
 
-    if(cube_index != 0 && cube_index != 255){
-        for(int i = 0; i < 12; ++i){
-            gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][0]]);
-            EmitVertex();
-            gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][1]]);
-            EmitVertex();
-            EndPrimitive();
+    if(false || (cube_index != 0 && cube_index != 255)){
+        if(mode == 1){
+            for (int i = 0; i < 12; ++i){
+                gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][0]]);
+                EmitVertex();
+                gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][1]]);
+                EmitVertex();
+                EndPrimitive();
+            }
+        } else if (mode == 2){
+            for(int i = 0; i < 6; ++i){
+                for(int j = 0; j < 6; ++j){
+                    gl_Position = mvp * (gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[j][0]]]);
+                    EmitVertex();
+                    gl_Position = mvp * (gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[j][1]]]);
+                    EmitVertex();
+                    EndPrimitive();
+                }
+            }
         }
     }
 }
