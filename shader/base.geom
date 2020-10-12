@@ -115,15 +115,22 @@ void marching_cubes(){
     int cube_index = 0;
     int voxel_size = 1;
 
-    int x = int(gl_in[0].gl_Position.x);
-    int y = int(gl_in[0].gl_Position.y);
-    int z = int(gl_in[0].gl_Position.z);
-
-    bool lod = false;
+    bool lod = true;
 
     if(lod){
+        // voxel position
+        int x = int(gl_in[0].gl_Position.x);
+        int y = int(gl_in[0].gl_Position.y);
+        int z = int(gl_in[0].gl_Position.z);
+
+        // base voxel position
+        int x_base = x - (x%2);
+        int y_base = y - (y%2);
+        int z_base = z - (z%2);
+
+        // scale the voxels according to the voxel size
         // check for voxel size / lod
-        if (length(camera_position - (model*gl_in[0].gl_Position).xyz) > 0.5f){
+        if (length(camera_position - (model*vec4(x_base, y_base, z_base, 1)).xyz) > 0.5){
             voxel_size = 2;
         }
 
