@@ -22,6 +22,7 @@ uniform int mode;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
+uniform vec3 camera_position;
 
 vec4[8] corner = {
 vec4(0, 0, 1, 0),
@@ -112,6 +113,34 @@ void marching_cubes(){
     float[8] corner_sample;
     mat4 mvp = projection * view * model;
     int cube_index = 0;
+    int voxel_size = 1;
+
+    int x = int(gl_in[0].gl_Position.x);
+    int y = int(gl_in[0].gl_Position.y);
+    int z = int(gl_in[0].gl_Position.z);
+
+    bool lod = false;
+
+    if(lod){
+        // check for voxel size / lod
+        if (length(camera_position - (model*gl_in[0].gl_Position).xyz) > 0.5f){
+            voxel_size = 2;
+        }
+
+        //voxel_size = calculate_current_lod(gl_in[0].gl_Position);
+
+
+        // check if voxel is covered
+        // if covered return;
+        if (voxel_size == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
+            return;
+        }
+    }
+
+    // calculate lod of neighbouring voxels
+    //neighbour_lod_1 = calculate_current_lod(gl_in[0].gl_Position + vec3(1,0,0));
+    //neighbour_lod_2 = calculate_current_lod(gl_in[0].gl_Position + vec3(1,1,0));
+    // adapt cube according to transvoxel
 
     int k = 1;
 
@@ -119,7 +148,7 @@ void marching_cubes(){
     // compute the index of the cube that will define which triangles will be generated
     // this works already
     for (int i = 0; i < 8; i++){
-        corner_sample[i] = sample_volume(gl_in[0].gl_Position + corner[i]);
+        corner_sample[i] = sample_volume(gl_in[0].gl_Position + voxel_size * corner[i]);
         if (corner_sample[i] < iso_value) cube_index |= k;
         // do a bit shift in order to multiply with 2 faster
         k = k << 1;
@@ -140,8 +169,8 @@ void marching_cubes(){
         if ((cut_edges & k) == k){
             int a_index = edge_vertex_mapping[i][0];
             int b_index = edge_vertex_mapping[i][1];
-            vec4 a = gl_in[0].gl_Position + corner[a_index];
-            vec4 b = gl_in[0].gl_Position + corner[b_index];
+            vec4 a = gl_in[0].gl_Position + voxel_size * corner[a_index];
+            vec4 b = gl_in[0].gl_Position + voxel_size * corner[b_index];
             float value_a = corner_sample[a_index];
             float value_b = corner_sample[b_index];
             vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);

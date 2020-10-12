@@ -22,6 +22,7 @@ uniform int mode;
 uniform mat4 view;
 uniform mat4 projection;
 uniform mat4 model;
+uniform vec3 camera_position;
 
 vec4[8] corner = {
 vec4(0, 0, 1, 0),
@@ -83,7 +84,29 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
 
 
 void main() {
-    // scale the voxels according to the voxel size
+    bool lod = false;
+    int voxel_size = 1;
+    int x = int(gl_in[0].gl_Position.x);
+    int y = int(gl_in[0].gl_Position.y);
+    int z = int(gl_in[0].gl_Position.z);
+
+    if(lod){
+        // scale the voxels according to the voxel size
+        // check for voxel size / lod
+        if (length(camera_position - (model*gl_in[0].gl_Position).xyz) > 0.5f){
+            voxel_size = 2;
+        }
+
+        //voxel_size = calculate_current_lod(gl_in[0].gl_Position);
+
+
+        // check if voxel is covered
+        // if covered return;
+        if (voxel_size == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
+            return;
+        }
+    }
+
     for (int i = 0; i < 8; ++i)
         corner[i] = voxel_size * corner[i];
 
@@ -91,6 +114,7 @@ void main() {
     mat4 mvp = projection * view * model;
     int k = 1;
     int cube_index = 0;
+
 
     for (int i = 0; i < 8; i++){
         corner_sample[i] = sample_volume(gl_in[0].gl_Position + corner[i]);

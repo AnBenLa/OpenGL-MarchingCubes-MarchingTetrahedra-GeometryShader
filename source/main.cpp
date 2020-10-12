@@ -21,7 +21,7 @@
 int width = 800, height = 600, current_mode = 1;
 float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f, current_iso_value = 0.2, current_voxel_size = 1.0f;
 unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
-bool wireframe = false, first_mouse = false, show_voxels = false;
+bool wireframe = false, first_mouse = false, show_voxels = false, sample = false;
 std::vector<glm::vec3> points;
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
 GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id, VBO, VAO;;
@@ -352,12 +352,10 @@ int main(int argc, const char *argv[]) {
     //Shader normal_shader = Shader{"../shader/base.vert", "../shader/base.frag"};
     glUseProgram(normal_shader->get_program());
 
-    bool test = false;
-
-    if(test){
-        x_dim = 2;
-        y_dim = 2;
-        z_dim = 2;
+    if(sample){
+        x_dim = 4;
+        y_dim = 4;
+        z_dim = 4;
     }
 
     load_raw_volume("../volume_files/bucky.raw", x_dim, y_dim, z_dim);
@@ -377,6 +375,7 @@ int main(int argc, const char *argv[]) {
 
         uploadMatrices(normal_shader->get_program());
         upload_iso_value_and_voxel_size(normal_shader->get_program());
+        upload_lights_and_position(normal_shader->get_program());
 
         // specify the background color
         glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -400,6 +399,7 @@ int main(int argc, const char *argv[]) {
         if(show_voxels) {
             uploadMatrices(cube_shader->get_program());
             upload_iso_value_and_voxel_size(cube_shader->get_program());
+            upload_lights_and_position(cube_shader->get_program());
             glDrawArrays(GL_POINTS, 0, points.size());
         }
 
@@ -494,9 +494,22 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
         return;
     }
 
-    GLubyte* volume = new GLubyte[x_dim * y_dim * z_dim];
-    fread(volume, sizeof(GLubyte), x_dim * y_dim * z_dim, file);
-    fclose(file);
+    if(sample){
+        x_dim = 4;
+        y_dim = 4;
+        z_dim = 4;
+    }
+
+    GLubyte *volume = new GLubyte[x_dim * y_dim * z_dim];
+
+    if(sample){
+        for(int i = 0; i < x_dim * y_dim * z_dim; ++i) {
+            *(volume + i) = i;
+        }
+    } else {
+        fread(volume, sizeof(GLubyte), x_dim * y_dim * z_dim, file);
+        fclose(file);
+    }
 
     glGenTextures(1, &volume_texture_id);
     glBindTexture(GL_TEXTURE_3D, volume_texture_id);
@@ -511,6 +524,7 @@ void load_raw_volume(const char* raw_volume_path, unsigned short x_dim, unsigned
 
     glTexImage3D(GL_TEXTURE_3D, 0, GL_INTENSITY, x_dim, y_dim, z_dim, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, volume);
     delete[] volume;
+
 };
 
 void upload_lights_and_position(GLuint shader){
@@ -526,7 +540,7 @@ void upload_lights_and_position(GLuint shader){
     glUniform3f(light_specular_color_location, 255.0f / 255.0f, 255.0f / 255.0f, 160.0f / 255.0f);
     glUniform3f(light_diffuse_color_location, 255.0f / 255.0f, 255.0f / 255.0f, 160.0f / 255.0f);
     glUniform3f(ambient_light_color_location, 0.1, 0.1, 0.1);
-    glUniform3f(camera_position_location, 0,0,4);
+    glUniform3f(camera_position_location, camera->Position.x, camera->Position.y, camera->Position.z);
     glUniform1f(shininess_location, 30.0f);
 }
 
