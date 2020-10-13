@@ -127,14 +127,14 @@ void marching_cubes(){
 
     if(lod == 1){
         // voxel position
-        int x = int(gl_in[0].gl_Position.x);
-        int y = int(gl_in[0].gl_Position.y);
-        int z = int(gl_in[0].gl_Position.z);
+        int x = int(gl_in[0].gl_Position.x / voxel_size);
+        int y = int(gl_in[0].gl_Position.y / voxel_size);
+        int z = int(gl_in[0].gl_Position.z / voxel_size);
 
         // base voxel position
-        int x_base = x - (x%2);
-        int y_base = y - (y%2);
-        int z_base = z - (z%2);
+        float x_base = (x - (x%2)) * voxel_size;
+        float y_base = (y - (y%2)) * voxel_size;
+        float z_base = (z - (z%2)) * voxel_size;
 
         // check for voxel size / lod
         voxel_size_lod = lod_function(vec3(x_base, y_base, z_base));

@@ -82,30 +82,29 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
     return vec4((a + (iso_value - value_a)*(b - a)/(value_b - value_a)).xyz, 1);
 }
 
-
+int lod_function(vec3 voxel_position){
+    if (length(camera_position - (model*vec4(voxel_position, 1)).xyz) > 0.5)
+        return 2;
+    else
+        return 1;
+}
 
 void main() {
     int voxel_size_lod = 1;
 
     if(lod == 1){
         // voxel position
-        int x = int(gl_in[0].gl_Position.x);
-        int y = int(gl_in[0].gl_Position.y);
-        int z = int(gl_in[0].gl_Position.z);
+        int x = int(gl_in[0].gl_Position.x / voxel_size);
+        int y = int(gl_in[0].gl_Position.y / voxel_size);
+        int z = int(gl_in[0].gl_Position.z / voxel_size);
 
         // base voxel position
-        int x_base = x - (x%2);
-        int y_base = y - (y%2);
-        int z_base = z - (z%2);
+        float x_base = (x - (x%2)) * voxel_size;
+        float y_base = (y - (y%2)) * voxel_size;
+        float z_base = (z - (z%2)) * voxel_size;
 
-        // scale the voxels according to the voxel size
         // check for voxel size / lod
-        if (length(camera_position - (model*vec4(x_base, y_base, z_base, 1)).xyz) > 0.5){
-            voxel_size_lod = 2;
-        }
-
-        //voxel_size = calculate_current_lod(gl_in[0].gl_Position);
-
+        voxel_size_lod = lod_function(vec3(x_base, y_base, z_base));
 
         // check if voxel is covered
         // if covered return;
