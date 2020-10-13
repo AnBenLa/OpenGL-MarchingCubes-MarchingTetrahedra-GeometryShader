@@ -252,9 +252,32 @@ void marching_tetracubes(){
     mat4 mvp = projection * view * model;
     int cube_index = 0;
 
+    int voxel_size_lod = 1;
+
+    if(lod == 1){
+        // voxel position
+        int x = int(gl_in[0].gl_Position.x / voxel_size);
+        int y = int(gl_in[0].gl_Position.y / voxel_size);
+        int z = int(gl_in[0].gl_Position.z / voxel_size);
+
+        // base voxel position
+        float x_base = (x - (x%2)) * voxel_size;
+        float y_base = (y - (y%2)) * voxel_size;
+        float z_base = (z - (z%2)) * voxel_size;
+
+        // check for voxel size / lod
+        voxel_size_lod = lod_function(vec3(x_base, y_base, z_base));
+
+        // check if voxel is covered
+        // if covered return;
+        if (voxel_size_lod == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
+            return;
+        }
+    }
+
     // store the corner values to avoid recomputation
     for (int i = 0; i < 8; i++){
-        corner_sample[i] = sample_volume(gl_in[0].gl_Position + corner[i]);
+        corner_sample[i] = sample_volume(gl_in[0].gl_Position + voxel_size_lod * corner[i]);
     }
 
     // for each tetrahedron
@@ -295,8 +318,8 @@ void marching_tetracubes(){
                 int edge_b_actual_index = tetrahedrons[i][edge_b_index];
 
                 // the position of the edge vertices is then being computed
-                vec4 vertex_a = gl_in[0].gl_Position + corner[edge_a_actual_index];
-                vec4 vertex_b = gl_in[0].gl_Position + corner[edge_b_actual_index];
+                vec4 vertex_a = gl_in[0].gl_Position + voxel_size_lod * corner[edge_a_actual_index];
+                vec4 vertex_b = gl_in[0].gl_Position + voxel_size_lod * corner[edge_b_actual_index];
 
                 // the iso-values of the vertices is the looked up
                 float vertex_a_value = corner_sample[edge_a_actual_index];

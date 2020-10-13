@@ -131,13 +131,12 @@ void main() {
 
     if(false || (cube_index != 0 && cube_index != 255)){
         frag.normal = vec3(0,0,0);
+        if(voxel_size_lod == 2)
+            frag.color = vec4(1,0,0,1);
+        else
+            frag.color = vec4(0,0,1,1);
         if(mode == 1){
             for (int i = 0; i < 12; ++i){
-                if(voxel_size_lod == 2){
-                    frag.color = vec4(1,0,0,1);
-                } else {
-                    frag.color = vec4(0,0,1,1);
-                }
                 gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][0]]);
                 EmitVertex();
                 gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][1]]);
@@ -146,12 +145,21 @@ void main() {
             }
         } else if (mode == 2){
             for(int i = 0; i < 6; ++i){
-                for(int j = 0; j < 6; ++j){
-                    gl_Position = mvp * (gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[j][0]]]);
-                    EmitVertex();
-                    gl_Position = mvp * (gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[j][1]]]);
-                    EmitVertex();
-                    EndPrimitive();
+                cube_index = 0;
+                int k = 1;
+                // check all 4 corners of the current tetrahedron
+                for (int j = 0; j < 4; ++j){
+                    if (corner_sample[tetrahedrons[i][j]] < iso_value) cube_index |= k;
+                    k = k << 1;
+                }
+                if(cube_index != 0 && cube_index != 15){
+                    for (int j = 0; j < 6; ++j){
+                        gl_Position = mvp * (gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[j][0]]]);
+                        EmitVertex();
+                        gl_Position = mvp * (gl_in[0].gl_Position + corner[tetrahedrons[i][tetrahedra_edge_vertex_mapping[j][1]]]);
+                        EmitVertex();
+                        EndPrimitive();
+                    }
                 }
             }
         }
