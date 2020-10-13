@@ -83,7 +83,7 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
 }
 
 int lod_function(vec3 voxel_position){
-    if (length(camera_position - (model*vec4(voxel_position, 1)).xyz) > 0.5)
+    if (length(vec3(0,0,0) /*camera_position*/ - (model*vec4(voxel_position, 1)).xyz) > 0.5)
         return 2;
     else
         return 1;
@@ -91,6 +91,7 @@ int lod_function(vec3 voxel_position){
 
 void main() {
     int voxel_size_lod = 1;
+    bool transvoxel = false;
 
     if(lod == 1){
         // voxel position
@@ -110,6 +111,22 @@ void main() {
         // if covered return;
         if (voxel_size_lod == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
             return;
+        }
+
+        // if we have a larger voxel check if the neighbour voxels are smaller (if so we have a transvoxel)
+        if (voxel_size_lod == 2){
+            // find neighbour lod
+            int lod_left = lod_function(vec3(x_base - 2 * voxel_size, y_base, z_base));
+            int lod_right = lod_function(vec3(x_base + 2 * voxel_size, y_base, z_base));
+            int lod_down = lod_function(vec3(x_base, y_base - 2 * voxel_size, z_base));
+            int lod_top = lod_function(vec3(x_base, y_base + 2 * voxel_size, z_base));
+            int lod_front = lod_function(vec3(x_base, y_base, z_base - 2 * voxel_size));
+            int lod_back = lod_function(vec3(x_base, y_base, z_base + 2 * voxel_size));
+
+            // identify transvoxel
+            if (lod_left == 1 || lod_right == 1 || lod_down == 1 || lod_top == 1 || lod_front == 1 || lod_back == 1){
+                transvoxel = true;
+            }
         }
     }
 
@@ -131,10 +148,14 @@ void main() {
 
     if(false || (cube_index != 0 && cube_index != 255)){
         frag.normal = vec3(0,0,0);
-        if(voxel_size_lod == 2)
+
+        if(voxel_size_lod == 2 && !transvoxel)
             frag.color = vec4(1,0,0,1);
-        else
+        else if (voxel_size_lod == 2 && transvoxel)
+            frag.color = vec4(0,1,0,1);
+        else if (voxel_size == 1)
             frag.color = vec4(0,0,1,1);
+
         if(mode == 1){
             for (int i = 0; i < 12; ++i){
                 gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][0]]);

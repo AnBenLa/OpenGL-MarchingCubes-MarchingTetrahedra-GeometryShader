@@ -36,6 +36,17 @@ vec4(1, 1, 1, 0),
 vec4(1, 1, 0, 0),
 vec4(0, 1, 0, 0) };
 
+vec4[8] transvoxel_adjust = {
+vec4(0, 0, 1, 0),
+vec4(1, 0, 1, 0),
+vec4(1, 0, 0, 0),
+vec4(0, 0, 0, 0),
+
+vec4(0, 1, 1, 0),
+vec4(1, 1, 1, 0),
+vec4(1, 1, 0, 0),
+vec4(0, 1, 0, 0) };
+
 // here the 6 different tetrahedrons are defined
 // i.e. the tetrahedra between the cube vertices 3,0,7,6
 // i.e. the tetrahedra betweem the cube vertices 7,0,4,6
@@ -98,10 +109,10 @@ int edge_vertex_mapping[12][2] = {
 };
 
 int lod_function(vec3 voxel_position){
-    if (length(camera_position - (model*vec4(voxel_position, 1)).xyz) > 0.5)
-        return 2;
+    if (length(vec3(0, 0, 0)/*camera_position*/ - (model*vec4(voxel_position, 1)).xyz) > 0.5)
+    return 2;
     else
-        return 1;
+    return 1;
 }
 
 // has to be done since the texture coordinates are between 0,0,0 and 1,1,1
@@ -117,6 +128,22 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
     return vec4((a + (iso_value - value_a)*(b - a)/(value_b - value_a)).xyz, 1);
 }
 
+int check_for_occupancy(vec3 voxel_pos){
+    int k = 1;
+    int cube_index = 0;
+    // sample the volume at each corner and store the result in the corner sample array
+    // compute the index of the cube that will define which triangles will be generated
+    // this works already
+    for (int i = 0; i < 8; i++){
+        // scale the voxels according to the voxel size
+        float corner_sample = sample_volume(vec4(voxel_pos, 1) + corner[i]);
+        if (corner_sample < iso_value) cube_index |= k;
+        // do a bit shift in order to multiply with 2 faster
+        k = k << 1;
+    }
+    return cube_index;
+}
+
 void marching_cubes(){
     float[8] corner_sample;
     mat4 mvp = projection * view * model;
@@ -125,8 +152,8 @@ void marching_cubes(){
 
     bool transvoxel = false;
 
-    if(lod == 1){
-        // voxel position
+    if (lod == 1){
+        // voxel position normalized (always integer values after the division by voxel size)
         int x = int(gl_in[0].gl_Position.x / voxel_size);
         int y = int(gl_in[0].gl_Position.y / voxel_size);
         int z = int(gl_in[0].gl_Position.z / voxel_size);
@@ -146,17 +173,62 @@ void marching_cubes(){
         }
 
         // if we have a larger voxel check if the neighbour voxels are smaller (if so we have a transvoxel)
-        if(voxel_size_lod == 2){
+        if (voxel_size_lod == 2){
             // find neighbour lod
-            int lod_left = lod_function(vec3(x_base - 2, y_base, z_base));
-            int lod_right = lod_function(vec3(x_base + 2, y_base, z_base));
-            int lod_down = lod_function(vec3(x_base, y_base - 2, z_base));
-            int lod_up = lod_function(vec3(x_base, y_base + 2, z_base));
-            int lod_front = lod_function(vec3(x_base, y_base, z_base - 2));
-            int lod_back = lod_function(vec3(x_base, y_base, z_base + 2));
+            // TODO might not be correct yet. not sure...
+            int lod_left = lod_function(vec3(x_base - 2 * voxel_size, y_base, z_base));
+            int lod_right = lod_function(vec3(x_base + 2 * voxel_size, y_base, z_base));
+            int lod_down = lod_function(vec3(x_base, y_base - 2 * voxel_size, z_base));
+            int lod_top = lod_function(vec3(x_base, y_base + 2 * voxel_size, z_base));
+            int lod_front = lod_function(vec3(x_base, y_base, z_base - 2 * voxel_size));
+            int lod_back = lod_function(vec3(x_base, y_base, z_base + 2 * voxel_size));
+
+            // the transvoxel adjust is used to determine the final position of the vertices (by interpolation)
+            // it is basically just the cube corner array but the cube corner array is needed for the volume sampling so it is not modified
+            if (lod_left == 1){
+                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(0.2, 0, 0, 0);
+                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(0.2, 0, 0, 0);
+                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(0.2, 0, 0, 0);
+                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0.2, 0, 0, 0);
+            }
+
+            if (lod_right == 1){
+                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(-0.2, 0, 0, 0);
+                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(-0.2, 0, 0, 0);
+                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(-0.2, 0, 0, 0);
+                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(-0.2, 0, 0, 0);
+            }
+
+            if (lod_down == 1){
+                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(0, 0.2, 0, 0);
+                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(0, 0.2, 0, 0);
+                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(0, 0.2, 0, 0);
+                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(0, 0.2, 0, 0);
+            }
+
+            if (lod_top == 1){
+                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(0, -0.2, 0, 0);
+                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(0, -0.2, 0, 0);
+                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(0, -0.2, 0, 0);
+                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0, -0.2, 0, 0);
+            }
+
+            if (lod_front == 1){
+                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(0, 0, 0.2, 0);
+                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(0, 0, 0.2, 0);
+                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(0, 0, 0.2, 0);
+                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0, 0, 0.2, 0);
+            }
+
+            if (lod_back == 1){
+                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(0, 0, -0.2, 0);
+                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(0, 0, -0.2, 0);
+                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(0, 0, -0.2, 0);
+                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(0, 0, -0.2, 0);
+            }
 
             // identify transvoxel
-            if(lod_left == 1 || lod_right == 1 || lod_down == 1 || lod_up == 1 || lod_front == 1 || lod_back == 1){
+            if (lod_left == 1 || lod_right == 1 || lod_down == 1 || lod_top == 1 || lod_front == 1 || lod_back == 1){
                 transvoxel = true;
             }
         }
@@ -197,8 +269,8 @@ void marching_cubes(){
         if ((cut_edges & k) == k){
             int a_index = edge_vertex_mapping[i][0];
             int b_index = edge_vertex_mapping[i][1];
-            vec4 a = gl_in[0].gl_Position + voxel_size_lod * corner[a_index];
-            vec4 b = gl_in[0].gl_Position + voxel_size_lod * corner[b_index];
+            vec4 a = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[a_index];
+            vec4 b = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[b_index];
             float value_a = corner_sample[a_index];
             float value_b = corner_sample[b_index];
             vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);
@@ -220,28 +292,16 @@ void marching_cubes(){
         gl_Position = mvp * vert_a;
         frag.position = (model * vert_a).xyz;
         frag.color = model * vert_a;
-        if(transvoxel){
-            frag.color = vec4(0,1,0,1);
-            frag.normal = vec3(0,0,0);
-        }
         EmitVertex();
 
         gl_Position = mvp * vert_b;
         frag.position = (model * vert_b).xyz;
         frag.color = model * vert_b;
-        if(transvoxel){
-            frag.color = vec4(0,1,0,1);
-            frag.normal = vec3(0,0,0);
-        }
         EmitVertex();
 
         gl_Position = mvp * vert_c;
         frag.position = (model * vert_c).xyz;
         frag.color = model * vert_c;
-        if(transvoxel){
-            frag.color = vec4(0,1,0,1);
-            frag.normal = vec3(0,0,0);
-        }
         EmitVertex();
         EndPrimitive();
     }
@@ -254,7 +314,7 @@ void marching_tetracubes(){
 
     int voxel_size_lod = 1;
 
-    if(lod == 1){
+    if (lod == 1){
         // voxel position
         int x = int(gl_in[0].gl_Position.x / voxel_size);
         int y = int(gl_in[0].gl_Position.y / voxel_size);
@@ -300,11 +360,11 @@ void marching_tetracubes(){
             // the edge 2 is between vertices 0 and 2 of the current tetrahedra
             // the edge 0 is between vertices 0 and 3 of the current tetrahedra
             int edges [3] = { tetrahedra_triangle_map[cube_index][k],
-                              tetrahedra_triangle_map[cube_index][k + 1],
-                              tetrahedra_triangle_map[cube_index][k + 2]};
+            tetrahedra_triangle_map[cube_index][k + 1],
+            tetrahedra_triangle_map[cube_index][k + 2] };
             vec4 vertices [3];
 
-            for(int l = 0; l < 3; ++l){
+            for (int l = 0; l < 3; ++l){
                 // here the vertex indices of the current tetrahedra for the edge_0 are selected
                 // the information for this is stored in tetrahedra_edge_vertex_mapping
                 // the edge 0 i.e. is between the vertices 0 and 3 of the tetrahedra
@@ -333,7 +393,7 @@ void marching_tetracubes(){
             // TODO: this seems to be working incorrectly!
             frag.normal = abs(normalize(cross(a, b)));
 
-            for(int l = 0; l < 3; ++l){
+            for (int l = 0; l < 3; ++l){
                 gl_Position = projection * view * vertices[l];
                 frag.position = vertices[l].xyz;
                 frag.color = vertices[l];
