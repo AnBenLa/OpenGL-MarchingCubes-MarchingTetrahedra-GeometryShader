@@ -97,6 +97,13 @@ int edge_vertex_mapping[12][2] = {
 { 3, 7 }
 };
 
+int lod_function(vec3 voxel_position){
+    if (length(camera_position - (model*vec4(voxel_position, 1)).xyz) > 0.5)
+        return 2;
+    else
+        return 1;
+}
+
 // has to be done since the texture coordinates are between 0,0,0 and 1,1,1
 vec3 texture_position(vec4 position){
     return position.xyz/volume_dimensions;
@@ -114,7 +121,9 @@ void marching_cubes(){
     float[8] corner_sample;
     mat4 mvp = projection * view * model;
     int cube_index = 0;
-    int voxel_size = 1;
+    int voxel_size_lod = 1;
+
+    bool transvoxel = false;
 
     if(lod == 1){
         // voxel position
@@ -127,20 +136,32 @@ void marching_cubes(){
         int y_base = y - (y%2);
         int z_base = z - (z%2);
 
-        // scale the voxels according to the voxel size
         // check for voxel size / lod
-        if (length(camera_position - (model*vec4(x_base, y_base, z_base, 1)).xyz) > 0.5){
-            voxel_size = 2;
-        }
-
-        //voxel_size = calculate_current_lod(gl_in[0].gl_Position);
-
+        voxel_size_lod = lod_function(vec3(x_base, y_base, z_base));
 
         // check if voxel is covered
         // if covered return;
-        if (voxel_size == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
+        if (voxel_size_lod == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
             return;
         }
+
+        // if we have a larger voxel check if the neighbour voxels are smaller (if so we have a transvoxel)
+        if(voxel_size_lod == 2){
+            // find neighbour lod
+            int lod_left = lod_function(vec3(x_base - 2, y_base, z_base));
+            int lod_right = lod_function(vec3(x_base + 2, y_base, z_base));
+            int lod_down = lod_function(vec3(x_base, y_base - 2, z_base));
+            int lod_up = lod_function(vec3(x_base, y_base + 2, z_base));
+            int lod_front = lod_function(vec3(x_base, y_base, z_base - 2));
+            int lod_back = lod_function(vec3(x_base, y_base, z_base + 2));
+
+            // identify transvoxel
+            if(lod_left == 1 || lod_right == 1 || lod_down == 1 || lod_up == 1 || lod_front == 1 || lod_back == 1){
+                transvoxel = true;
+            }
+        }
+
+
     }
 
     // calculate lod of neighbouring voxels
@@ -154,7 +175,8 @@ void marching_cubes(){
     // compute the index of the cube that will define which triangles will be generated
     // this works already
     for (int i = 0; i < 8; i++){
-        corner_sample[i] = sample_volume(gl_in[0].gl_Position + voxel_size * corner[i]);
+        // scale the voxels according to the voxel size
+        corner_sample[i] = sample_volume(gl_in[0].gl_Position + voxel_size_lod * corner[i]);
         if (corner_sample[i] < iso_value) cube_index |= k;
         // do a bit shift in order to multiply with 2 faster
         k = k << 1;
@@ -175,8 +197,8 @@ void marching_cubes(){
         if ((cut_edges & k) == k){
             int a_index = edge_vertex_mapping[i][0];
             int b_index = edge_vertex_mapping[i][1];
-            vec4 a = gl_in[0].gl_Position + voxel_size * corner[a_index];
-            vec4 b = gl_in[0].gl_Position + voxel_size * corner[b_index];
+            vec4 a = gl_in[0].gl_Position + voxel_size_lod * corner[a_index];
+            vec4 b = gl_in[0].gl_Position + voxel_size_lod * corner[b_index];
             float value_a = corner_sample[a_index];
             float value_b = corner_sample[b_index];
             vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);
@@ -198,16 +220,28 @@ void marching_cubes(){
         gl_Position = mvp * vert_a;
         frag.position = (model * vert_a).xyz;
         frag.color = model * vert_a;
+        if(transvoxel){
+            frag.color = vec4(0,1,0,1);
+            frag.normal = vec3(0,0,0);
+        }
         EmitVertex();
 
         gl_Position = mvp * vert_b;
         frag.position = (model * vert_b).xyz;
         frag.color = model * vert_b;
+        if(transvoxel){
+            frag.color = vec4(0,1,0,1);
+            frag.normal = vec3(0,0,0);
+        }
         EmitVertex();
 
         gl_Position = mvp * vert_c;
         frag.position = (model * vert_c).xyz;
         frag.color = model * vert_c;
+        if(transvoxel){
+            frag.color = vec4(0,1,0,1);
+            frag.normal = vec3(0,0,0);
+        }
         EmitVertex();
         EndPrimitive();
     }

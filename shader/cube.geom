@@ -85,7 +85,7 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
 
 
 void main() {
-    int voxel_size = 1;
+    int voxel_size_lod = 1;
 
     if(lod == 1){
         // voxel position
@@ -101,7 +101,7 @@ void main() {
         // scale the voxels according to the voxel size
         // check for voxel size / lod
         if (length(camera_position - (model*vec4(x_base, y_base, z_base, 1)).xyz) > 0.5){
-            voxel_size = 2;
+            voxel_size_lod = 2;
         }
 
         //voxel_size = calculate_current_lod(gl_in[0].gl_Position);
@@ -109,13 +109,13 @@ void main() {
 
         // check if voxel is covered
         // if covered return;
-        if (voxel_size == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
+        if (voxel_size_lod == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
             return;
         }
     }
 
     for (int i = 0; i < 8; ++i)
-        corner[i] = voxel_size * corner[i];
+        corner[i] = voxel_size_lod * voxel_size * corner[i];
 
     float[8] corner_sample;
     mat4 mvp = projection * view * model;
@@ -134,7 +134,7 @@ void main() {
         frag.normal = vec3(0,0,0);
         if(mode == 1){
             for (int i = 0; i < 12; ++i){
-                if(voxel_size == 2){
+                if(voxel_size_lod == 2){
                     frag.color = vec4(1,0,0,1);
                 } else {
                     frag.color = vec4(0,0,1,1);
