@@ -18,6 +18,7 @@ uniform float iso_value;
 uniform float voxel_size;
 // 1 if marching cubes, 2 if marching tetrahedra
 uniform int mode;
+uniform int lod;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -115,9 +116,7 @@ void marching_cubes(){
     int cube_index = 0;
     int voxel_size = 1;
 
-    bool lod = true;
-
-    if(lod){
+    if(lod == 1){
         // voxel position
         int x = int(gl_in[0].gl_Position.x);
         int y = int(gl_in[0].gl_Position.y);

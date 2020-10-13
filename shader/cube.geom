@@ -18,6 +18,7 @@ uniform float iso_value;
 uniform float voxel_size;
 // 1 if marching cubes, 2 if marching tetrahedra
 uniform int mode;
+uniform int lod;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -84,10 +85,9 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
 
 
 void main() {
-    bool lod = true;
     int voxel_size = 1;
 
-    if(lod){
+    if(lod == 1){
         // voxel position
         int x = int(gl_in[0].gl_Position.x);
         int y = int(gl_in[0].gl_Position.y);
@@ -131,8 +131,14 @@ void main() {
 
 
     if(false || (cube_index != 0 && cube_index != 255)){
+        frag.normal = vec3(0,0,0);
         if(mode == 1){
             for (int i = 0; i < 12; ++i){
+                if(voxel_size == 2){
+                    frag.color = vec4(1,0,0,1);
+                } else {
+                    frag.color = vec4(0,0,1,1);
+                }
                 gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][0]]);
                 EmitVertex();
                 gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][1]]);

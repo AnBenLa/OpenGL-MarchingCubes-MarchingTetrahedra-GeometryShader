@@ -24,7 +24,7 @@ unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
 bool wireframe = false, first_mouse = false, show_voxels = false, sample = false;
 std::vector<glm::vec3> points;
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
-GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id, VBO, VAO;;
+GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id, VBO, VAO, lod = 0;
 GLFWwindow *window;
 Shader* normal_shader;
 Shader* cube_shader;
@@ -535,6 +535,7 @@ void upload_lights_and_position(GLuint shader){
     int ambient_light_color_location = glGetUniformLocation(shader, "ambient_light_color");
     int camera_position_location = glGetUniformLocation(shader, "camera_position");
     int shininess_location = glGetUniformLocation(shader, "shininess");
+    int lod_location = glGetUniformLocation(shader, "lod");
 
     glUniform3f(light_position_location, 0.0, 0.0, 10.0f);
     glUniform3f(light_specular_color_location, 255.0f / 255.0f, 255.0f / 255.0f, 160.0f / 255.0f);
@@ -542,6 +543,7 @@ void upload_lights_and_position(GLuint shader){
     glUniform3f(ambient_light_color_location, 0.1, 0.1, 0.1);
     glUniform3f(camera_position_location, camera->Position.x, camera->Position.y, camera->Position.z);
     glUniform1f(shininess_location, 30.0f);
+    glUniform1i(lod_location, lod);
 }
 
 void draw_imgui_windows(){
@@ -561,6 +563,11 @@ void draw_imgui_windows(){
             ImGui::Text("Display Voxel/Tetrahedra: On");
         } else {
             ImGui::Text("Display Voxel/Tetrahedra: Off");
+        }
+        if(lod == 1){
+            ImGui::Text("LOD: On");
+        } else {
+            ImGui::Text("LOD: Off");
         }
         ImGui::End();
         ImGui::Render();
@@ -587,6 +594,10 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_M && action == GLFW_PRESS) {
         current_mode = (current_mode % 2) + 1;
+    }
+
+    if (key == GLFW_KEY_R && action == GLFW_PRESS) {
+        lod = (lod + 1) % 2;
     }
 
     if (key == GLFW_KEY_E && action == GLFW_PRESS) {

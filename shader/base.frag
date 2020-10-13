@@ -18,7 +18,10 @@ uniform vec3 camera_position;
 uniform float shininess;
 
 void main(){
-    
+    if(length(frag.normal) < 0.1f){
+        out_color = frag.color;
+        return;
+    }
     vec3 light_dir = normalize(light_position - frag.position);
     vec3 view_dir = normalize(camera_position - frag.position);
 
