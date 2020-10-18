@@ -153,7 +153,7 @@ void main() {
             frag.color = vec4(1,0,0,1);
         else if (voxel_size_lod == 2 && transvoxel)
             frag.color = vec4(0,1,0,1);
-        else if (voxel_size == 1)
+        else if (voxel_size_lod == 1)
             frag.color = vec4(0,0,1,1);
 
         if(mode == 1){
