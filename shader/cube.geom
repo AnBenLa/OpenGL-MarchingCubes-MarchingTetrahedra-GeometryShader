@@ -89,6 +89,122 @@ int lod_function(vec3 voxel_position){
         return 1;
 }
 
+int check_for_occupancy(vec3 voxel_pos){
+    int k = 1;
+    int cube_index = 0;
+    // sample the volume at each corner and store the result in the corner sample array
+    // compute the index of the cube that will define which triangles will be generated
+    // this works already
+    for (int i = 0; i < 8; i++){
+        // scale the voxels according to the voxel size
+        float corner_sample = sample_volume(vec4(voxel_pos, 1) + corner[i]);
+        if (corner_sample < iso_value) cube_index |= k;
+        // do a bit shift in order to multiply with 2 faster
+        k = k << 1;
+    }
+    return cube_index;
+}
+
+bool check_if_transvoxel(float x_base, float y_base, float z_base){
+    // find neighbour lod
+    int lod_left = lod_function(vec3(x_base - 2 * voxel_size, y_base, z_base));
+    if(lod_left == 1){
+        int left_index = check_for_occupancy(vec3(x_base - 1 * voxel_size, y_base, z_base));
+        if(left_index != 0 && left_index != 255)
+            return true;
+        left_index = check_for_occupancy(vec3(x_base - 1 * voxel_size, y_base + 1 * voxel_size, z_base));
+        if(left_index != 0 && left_index != 255)
+            return true;
+        left_index = check_for_occupancy(vec3(x_base - 1 * voxel_size, y_base, z_base + 1 * voxel_size));
+        if(left_index != 0 && left_index != 255)
+            return true;
+        left_index = check_for_occupancy(vec3(x_base - 1 * voxel_size, y_base + 1 * voxel_size, z_base + 1 * voxel_size));
+        if(left_index != 0 && left_index != 255)
+            return true;
+    }
+
+    int lod_right = lod_function(vec3(x_base + 2 * voxel_size, y_base, z_base));
+    if(lod_right == 1){
+        int right_index = check_for_occupancy(vec3(x_base + 2 * voxel_size, y_base, z_base));
+        if(right_index != 0 && right_index != 255)
+            return true;
+        right_index = check_for_occupancy(vec3(x_base + 2 * voxel_size, y_base + 1 * voxel_size, z_base));
+        if(right_index != 0 && right_index != 255)
+            return true;
+        right_index = check_for_occupancy(vec3(x_base + 2 * voxel_size, y_base, z_base + 1 * voxel_size));
+        if(right_index != 0 && right_index != 255)
+            return true;
+        right_index = check_for_occupancy(vec3(x_base + 2 * voxel_size, y_base + 1 * voxel_size, z_base + 1 * voxel_size));
+        if(right_index != 0 && right_index != 255)
+            return true;
+    }
+
+    int lod_down = lod_function(vec3(x_base, y_base - 2 * voxel_size, z_base));
+    if(lod_down == 1){
+        int down_index = check_for_occupancy(vec3(x_base, y_base - 1 * voxel_size, z_base));
+        if(down_index != 0 && down_index != 255)
+            return true;
+        down_index = check_for_occupancy(vec3(x_base + 1 * voxel_size, y_base - 1 * voxel_size, z_base));
+        if(down_index != 0 && down_index != 255)
+            return true;
+        down_index = check_for_occupancy(vec3(x_base, y_base - 1 * voxel_size, z_base + 1 * voxel_size));
+        if(down_index != 0 && down_index != 255)
+            return true;
+        down_index = check_for_occupancy(vec3(x_base + 1 * voxel_size, y_base - 1 * voxel_size, z_base + 1 * voxel_size));
+        if(down_index != 0 && down_index != 255)
+            return true;
+    }
+
+    int lod_top = lod_function(vec3(x_base, y_base + 2 * voxel_size, z_base));
+    if(lod_top == 1){
+        int top_index = check_for_occupancy(vec3(x_base, y_base + 2 * voxel_size, z_base));
+        if(top_index != 0 && top_index != 255)
+            return true;
+        top_index = check_for_occupancy(vec3(x_base + 1 * voxel_size, y_base + 2 * voxel_size, z_base));
+        if(top_index != 0 && top_index != 255)
+            return true;
+        top_index = check_for_occupancy(vec3(x_base, y_base + 2 * voxel_size, z_base + 1 * voxel_size));
+        if(top_index != 0 && top_index != 255)
+            return true;
+        top_index = check_for_occupancy(vec3(x_base + 1 * voxel_size, y_base + 2 * voxel_size, z_base + 1 * voxel_size));
+        if(top_index != 0 && top_index != 255)
+            return true;
+    }
+
+    int lod_front = lod_function(vec3(x_base, y_base, z_base - 2 * voxel_size));
+    if(lod_front == 1){
+        int front_index = check_for_occupancy(vec3(x_base, y_base, z_base - 1 * voxel_size));
+        if(front_index != 0 && front_index != 255)
+            return true;
+        front_index = check_for_occupancy(vec3(x_base + 1 * voxel_size, y_base, z_base - 1 * voxel_size));
+        if(front_index != 0 && front_index != 255)
+            return true;
+        front_index = check_for_occupancy(vec3(x_base, y_base  + 1 * voxel_size, z_base - 1 * voxel_size));
+        if(front_index != 0 && front_index != 255)
+            return true;
+        front_index = check_for_occupancy(vec3(x_base + 1 * voxel_size, y_base + 1 * voxel_size, z_base - 1 * voxel_size));
+        if(front_index != 0 && front_index != 255)
+            return true;
+    }
+
+    int lod_back = lod_function(vec3(x_base, y_base, z_base + 2 * voxel_size));
+    if(lod_back == 1){
+        int back_index = check_for_occupancy(vec3(x_base, y_base, z_base + 2 * voxel_size));
+        if(back_index != 0 && back_index != 255)
+            return true;
+        back_index = check_for_occupancy(vec3(x_base + 1 * voxel_size, y_base, z_base + 2 * voxel_size));
+        if(back_index != 0 && back_index != 255)
+            return true;
+        back_index = check_for_occupancy(vec3(x_base, y_base + 1 * voxel_size, z_base + 2 * voxel_size));
+        if(back_index != 0 && back_index != 255)
+            return true;
+        back_index = check_for_occupancy(vec3(x_base + 1 * voxel_size, y_base + 1 * voxel_size, z_base + 2 * voxel_size));
+        if(back_index != 0 && back_index != 255)
+            return true;
+    }
+    return false;
+}
+
 void main() {
     int voxel_size_lod = 1;
     bool transvoxel = false;
@@ -115,18 +231,7 @@ void main() {
 
         // if we have a larger voxel check if the neighbour voxels are smaller (if so we have a transvoxel)
         if (voxel_size_lod == 2){
-            // find neighbour lod
-            int lod_left = lod_function(vec3(x_base - 2 * voxel_size, y_base, z_base));
-            int lod_right = lod_function(vec3(x_base + 2 * voxel_size, y_base, z_base));
-            int lod_down = lod_function(vec3(x_base, y_base - 2 * voxel_size, z_base));
-            int lod_top = lod_function(vec3(x_base, y_base + 2 * voxel_size, z_base));
-            int lod_front = lod_function(vec3(x_base, y_base, z_base - 2 * voxel_size));
-            int lod_back = lod_function(vec3(x_base, y_base, z_base + 2 * voxel_size));
-
-            // identify transvoxel
-            if (lod_left == 1 || lod_right == 1 || lod_down == 1 || lod_top == 1 || lod_front == 1 || lod_back == 1){
-                transvoxel = true;
-            }
+           transvoxel = check_if_transvoxel(x_base, y_base, z_base);
         }
     }
 
