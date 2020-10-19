@@ -261,7 +261,7 @@ void main() {
         else if (voxel_size_lod == 1)
             frag.color = vec4(0,0,1,1);
 
-        if(mode == 1){
+        if(mode == 1 || mode == 3){
             for (int i = 0; i < 12; ++i){
                 gl_Position = mvp * (gl_in[0].gl_Position + corner[edge_vertex_mapping[i][0]]);
                 EmitVertex();
