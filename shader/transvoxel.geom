@@ -233,8 +233,8 @@ void marching_cubes(){
         int corner_1 = (vertex >> 4) & 0x0F;
         int corner_2 = vertex & 0x0F;
 
-        vec4 a = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[corner_1];
-        vec4 b = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[corner_2];
+        vec4 a = gl_in[0].gl_Position + voxel_size_lod * corner[corner_1];
+        vec4 b = gl_in[0].gl_Position + voxel_size_lod * corner[corner_2];
         float value_a = sample_volume(a);
         float value_b = sample_volume(b);
         if(surface_shift == 0 || voxel_size_lod == 1){
