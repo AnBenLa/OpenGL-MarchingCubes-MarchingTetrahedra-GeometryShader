@@ -17,6 +17,7 @@ uniform vec3 volume_dimensions;
 uniform float iso_value;
 uniform float voxel_size;
 uniform int lod;
+uniform int surface_shift;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -115,6 +116,16 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
     return vec4((a + (iso_value - value_a)*(b - a)/(value_b - value_a)).xyz, 1);
 }
 
+vec4 interpolate_vertex_surface_shifting(float iso_value, vec4 a, vec4 b, float value_a, float value_b){
+    vec4 c = (a+b)*0.5f;
+    float value_c = sample_volume(c);
+
+    if((value_a-iso_value)*(value_c-iso_value)<0){
+        return vec4((a + (iso_value - value_a)*(c - a)/(value_c - value_a)).xyz, 1);
+    }
+    return vec4((b + (iso_value - value_b)*(c - b)/(value_c - value_b)).xyz, 1);
+}
+
 int check_for_occupancy(vec3 voxel_pos){
     int k = 1;
     int cube_index = 0;
@@ -209,7 +220,13 @@ void marching_tetracubes(){
                 float vertex_a_value = corner_sample[edge_a_actual_index];
                 float vertex_b_value = corner_sample[edge_b_actual_index];
 
-                vertices[l] = model * interpolate_vertex(iso_value, vertex_a, vertex_b, vertex_a_value, vertex_b_value);
+                if(surface_shift == 0 || voxel_size_lod == 1){
+                    vertices[l] = model * interpolate_vertex(iso_value, vertex_a, vertex_b, vertex_a_value, vertex_b_value);
+                } else {
+                    vertices[l] = model * interpolate_vertex_surface_shifting(iso_value, vertex_a, vertex_b, vertex_a_value, vertex_b_value);
+                }
+
+                //vertices[l] = model * interpolate_vertex(iso_value, vertex_a, vertex_b, vertex_a_value, vertex_b_value);
             }
 
             vec3 a = vertices[0].xyz - vertices[1].xyz;
