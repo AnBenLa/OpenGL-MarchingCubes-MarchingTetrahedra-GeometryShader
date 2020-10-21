@@ -13,6 +13,9 @@ layout(binding=0) uniform sampler3D volume;
 layout(binding=1) uniform isampler2D cellClass;
 layout(binding=2) uniform isampler2D cellData;
 layout(binding=3) uniform isampler2D vertexData;
+layout(binding=4) uniform isampler2D transitionCellClass;
+layout(binding=5) uniform isampler2D transitionCellData;
+layout(binding=6) uniform isampler2D transitionCellVertexData;
 
 uniform vec3 volume_dimensions;
 uniform float iso_value;

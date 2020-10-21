@@ -209,7 +209,7 @@ void generate_table_textures(){
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I , 256, 1, 0, GL_RED_INTEGER, GL_INT, &regularCellClass);
-
+    //__________________________________________________________________________________________________________________
     glGenTextures(1, &cell_data_id);
     //glActiveTexture(GL_TEXTURE4);
     glEnable(GL_TEXTURE_2D);
@@ -225,7 +225,7 @@ void generate_table_textures(){
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I, 16, 16, 0, GL_RED_INTEGER, GL_INT, &regularCellData);
-
+    //__________________________________________________________________________________________________________________
     glGenTextures(1, &regular_vertex_data_id);
     //glActiveTexture(GL_TEXTURE5);
     glEnable(GL_TEXTURE_2D);
@@ -241,6 +241,54 @@ void generate_table_textures(){
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I, 12, 256, 0, GL_RED_INTEGER, GL_INT, &regularVertexData);
+    //__________________________________________________________________________________________________________________
+    glGenTextures(1, &transition_cell_class_id);
+    //glActiveTexture(GL_TEXTURE3);
+    glEnable(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, transition_cell_class_id);
+    glUniform1i(glGetUniformLocation(marching_cubes_transvoxel_shader->get_program(), "transitionCellClass"), 4);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I , 512, 1, 0, GL_RED_INTEGER, GL_INT, &transitionCellClass);
+    //__________________________________________________________________________________________________________________
+    glGenTextures(1, &transition_cell_data_id);
+    //glActiveTexture(GL_TEXTURE5);
+    glEnable(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, transition_cell_data_id);
+    glUniform1i(glGetUniformLocation(marching_cubes_transvoxel_shader->get_program(), "transitionCellData"), 5);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I, 37, 56, 0, GL_RED_INTEGER, GL_INT, &transitionCellData);
+    //__________________________________________________________________________________________________________________
+    glGenTextures(1, &transition_vertex_data_id);
+    //glActiveTexture(GL_TEXTURE5);
+    glEnable(GL_TEXTURE_2D);
+
+    glBindTexture(GL_TEXTURE_2D, transition_vertex_data_id);
+    glUniform1i(glGetUniformLocation(marching_cubes_transvoxel_shader->get_program(), "transitionCellVertexData"), 6);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_R32I, 12, 512, 0, GL_RED_INTEGER, GL_INT, &transitionVertexData);
 
 }
 
@@ -420,6 +468,12 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
                 glBindTexture(GL_TEXTURE_2D, cell_data_id);
                 glActiveTexture(GL_TEXTURE3);
                 glBindTexture(GL_TEXTURE_2D, regular_vertex_data_id);
+                glActiveTexture(GL_TEXTURE4);
+                glBindTexture(GL_TEXTURE_2D, transition_cell_class_id);
+                glActiveTexture(GL_TEXTURE5);
+                glBindTexture(GL_TEXTURE_2D, transition_cell_data_id);
+                glActiveTexture(GL_TEXTURE6);
+                glBindTexture(GL_TEXTURE_2D, transition_vertex_data_id);
             }
         }
     }

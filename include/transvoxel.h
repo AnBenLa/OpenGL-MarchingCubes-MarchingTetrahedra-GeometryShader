@@ -506,7 +506,7 @@ const TransitionCellData transitionCellData[56] =
 // The transitionCornerData table contains the transition cell corner reuse data
 // shown in Figure 4.18.
 
-const unsigned char transitionCornerData[13] =
+GLint transitionCornerData[13] =
         {
                 0x30, 0x21, 0x20, 0x12, 0x40, 0x82, 0x10, 0x81, 0x80, 0x37, 0x27, 0x17, 0x87
         };
