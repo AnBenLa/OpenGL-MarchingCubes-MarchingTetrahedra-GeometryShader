@@ -22,6 +22,7 @@ uniform float iso_value;
 uniform float voxel_size;
 uniform int lod;
 uniform int surface_shift;
+uniform int project_transvoxel;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -96,6 +97,15 @@ int check_for_occupancy(vec3 voxel_pos){
     return cube_index;
 }
 
+// see https://math.stackexchange.com/a/100766
+vec4 project_onto_plane(vec4 point, vec3 normal, vec4 plane_point){
+    float t = (
+    dot(normal.x, plane_point.x) - dot(normal.x,point.x) +
+    dot(normal.y, plane_point.y) - dot(normal.y,point.y) +
+    dot(normal.z,plane_point.z) - dot(normal.z, point.z)) /
+    (normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
+    return vec4(point.x + t * normal.x, point.y + t * normal.y, point.z + t * normal.z, 1);
+}
 
 void marching_cubes(){
     float[8] corner_sample;
@@ -112,6 +122,8 @@ void marching_cubes(){
     int lod_top = 2;
     int lod_front = 2;
     int lod_back = 2;
+
+    float transvoxel_size = 0.2f;
 
     if (lod == 1){
         // voxel position normalized (always integer values after the division by voxel size)
@@ -144,53 +156,56 @@ void marching_cubes(){
             lod_front = lod_function(vec3(x_base, y_base, z_base - 2 * voxel_size));
             lod_back = lod_function(vec3(x_base, y_base, z_base + 2 * voxel_size));
 
-
-
             // the transvoxel adjust is used to determine the final position of the vertices (by interpolation)
             // it is basically just the cube corner array but the cube corner array is needed for the volume sampling so it is not modified
-            /*
+
             if (lod_left == 1){
-                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(0.1, 0, 0, 0);
-                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(0.1, 0, 0, 0);
-                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(0.1, 0, 0, 0);
-                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0.1, 0, 0, 0);
+                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(transvoxel_size, 0, 0, 0);
+                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(transvoxel_size, 0, 0, 0);
+                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(transvoxel_size, 0, 0, 0);
+                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(transvoxel_size, 0, 0, 0);
+                transvoxel = true;
             }
 
             if (lod_right == 1){
-                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(-0.1, 0, 0, 0);
-                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(-0.1, 0, 0, 0);
-                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(-0.1, 0, 0, 0);
-                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(-0.1, 0, 0, 0);
+                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(-transvoxel_size, 0, 0, 0);
+                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(-transvoxel_size, 0, 0, 0);
+                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(-transvoxel_size, 0, 0, 0);
+                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(-transvoxel_size, 0, 0, 0);
+                transvoxel = true;
             }
 
             if (lod_down == 1){
-                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(0, 0.1, 0, 0);
-                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(0, 0.1, 0, 0);
-                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(0, 0.1, 0, 0);
-                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(0, 0.1, 0, 0);
+                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(0, transvoxel_size, 0, 0);
+                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(0, transvoxel_size, 0, 0);
+                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(0, transvoxel_size, 0, 0);
+                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(0, transvoxel_size, 0, 0);
+                transvoxel = true;
             }
 
             if (lod_top == 1){
-                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(0, -0.1, 0, 0);
-                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(0, -0.1, 0, 0);
-                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(0, -0.1, 0, 0);
-                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0, -0.1, 0, 0);
+                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(0, -transvoxel_size, 0, 0);
+                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(0, -transvoxel_size, 0, 0);
+                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(0, -transvoxel_size, 0, 0);
+                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0, -transvoxel_size, 0, 0);
+                transvoxel = true;
             }
 
             if (lod_front == 1){
-                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(0, 0, 0.1, 0);
-                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(0, 0, 0.1, 0);
-                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(0, 0, 0.1, 0);
-                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0, 0, 0.1, 0);
+                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(0, 0, transvoxel_size, 0);
+                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(0, 0, transvoxel_size, 0);
+                transvoxel_adjust[2] = transvoxel_adjust[2] + vec4(0, 0, transvoxel_size, 0);
+                transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(0, 0, transvoxel_size, 0);
+                transvoxel = true;
             }
 
             if (lod_back == 1){
-                transvoxel_adjust[0] = transvoxel_adjust[0] + vec4(0, 0, -0.1, 0);
-                transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(0, 0, -0.1, 0);
-                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(0, 0, -0.1, 0);
-                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(0, 0, -0.1, 0);
+                transvoxel_adjust[4] = transvoxel_adjust[4] + vec4(0, 0, -transvoxel_size, 0);
+                transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(0, 0, -transvoxel_size, 0);
+                transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(0, 0, -transvoxel_size, 0);
+                transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0, 0, -transvoxel_size, 0);
+                transvoxel = true;
             }
-            */
 
 
         }
@@ -228,6 +243,8 @@ void marching_cubes(){
     }
 
     vec4[12] vertices;
+    vec4[12] adjusted_vertices;
+
     for(int i = 0; i < vertex_count; i++){
 
         int vertex = vertex_data[i];
@@ -238,12 +255,24 @@ void marching_cubes(){
 
         vec4 a = gl_in[0].gl_Position + voxel_size_lod * corner[corner_1];
         vec4 b = gl_in[0].gl_Position + voxel_size_lod * corner[corner_2];
-        float value_a = sample_volume(a);
-        float value_b = sample_volume(b);
+        float value_a = corner_sample[corner_1];
+        float value_b = corner_sample[corner_2];
+
         if(surface_shift == 0 || voxel_size_lod == 1){
             vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);
         } else {
             vertices[i] = interpolate_vertex_surface_shifting(iso_value, a, b, value_a, value_b);
+        }
+
+        if(transvoxel){
+            vec4 a_adj = gl_in[0].gl_Position + voxel_size_lod * transvoxel_adjust[corner_1];
+            vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod * transvoxel_adjust[corner_2];
+
+            if(surface_shift == 0 || voxel_size_lod == 1){
+                adjusted_vertices[i] = interpolate_vertex(iso_value, a_adj, b_adj, value_a, value_b);
+            } else {
+                adjusted_vertices[i] = interpolate_vertex_surface_shifting(iso_value, a_adj, b_adj, value_a, value_b);
+            }
         }
     }
 
@@ -259,7 +288,24 @@ void marching_cubes(){
 
         vec3 a = vert_a.xyz - vert_b.xyz;
         vec3 b = vert_c.xyz - vert_b.xyz;
-        frag.normal = abs(normalize(cross(a, b)));
+        vec3 n = abs(normalize(cross(a, b)));
+        frag.normal = n;
+
+        // TODO needs to be fixed
+        if(transvoxel && project_transvoxel == 1){
+            // get the points of the vertex after adjustment
+            vec4 vert_a_adj = adjusted_vertices[a_index];
+            vec4 vert_b_adj = adjusted_vertices[b_index];
+            vec4 vert_c_adj = adjusted_vertices[c_index];
+            // project the vertices onto the triangle plane
+            vert_a = project_onto_plane(vert_a_adj, n, vert_a);
+            vert_b = project_onto_plane(vert_b_adj, n, vert_b);
+            vert_c = project_onto_plane(vert_c_adj, n, vert_c);
+        } else if (transvoxel){
+            vert_a = adjusted_vertices[a_index];
+            vert_b = adjusted_vertices[b_index];
+            vert_c = adjusted_vertices[c_index];
+        }
 
         gl_Position = mvp * vert_a;
         frag.position = (model * vert_a).xyz;

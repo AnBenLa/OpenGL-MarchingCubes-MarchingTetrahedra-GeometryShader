@@ -23,7 +23,7 @@
 int width = 800, height = 600, current_mode = 1;
 float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f, current_iso_value = 0.2, current_voxel_size = 1.0f;
 unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
-bool wireframe = false, first_mouse = false, show_voxels = false, sample = false, surface_shift = false;
+bool wireframe = false, first_mouse = false, show_voxels = false, sample = false, surface_shift = false, project_transvoxel = false;
 std::vector<glm::vec3> points;
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
 GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id, VBO, VAO, lod = 0;
@@ -64,27 +64,9 @@ int main(int argc, const char *argv[]) {
     marching_cubes_shader = new Shader{"../shader/base.vert", "../shader/base.frag", "../shader/marching_cubes.geom"};
     marching_tetracubes_shader = new Shader{"../shader/base.vert", "../shader/base.frag", "../shader/marching_tetracubes.geom"};
     marching_cubes_transvoxel_shader = new Shader{"../shader/base.vert", "../shader/base.frag", "../shader/transvoxel.geom"};
-
-    selected_shader = marching_cubes_shader;
-
-    glUseProgram(selected_shader->get_program());
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_3D, volume_texture_id);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, edge_table_texture_id);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, triangle_table_texture_id);
-
     cube_shader = new Shader{"../shader/base.vert", "../shader/base.frag", "../shader/cube.geom"};
 
-    //Shader marching_cubes_shader = Shader{"../shader/base.vert", "../shader/base.frag"};
-    glUseProgram(selected_shader->get_program());
-
-    if(sample){
-        x_dim = 4;
-        y_dim = 4;
-        z_dim = 4;
-    }
+    selected_shader = marching_cubes_shader;
 
     load_raw_volume("../volume_files/bucky.raw", x_dim, y_dim, z_dim);
 
@@ -93,6 +75,13 @@ int main(int argc, const char *argv[]) {
     compute_voxel_points(x_dim, y_dim, z_dim, current_voxel_size);
 
     upload_lights_and_position(selected_shader->get_program());
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_3D, volume_texture_id);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, edge_table_texture_id);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, triangle_table_texture_id);
 
     while (!glfwWindowShouldClose(window)) {
         float currentFrame = glfwGetTime();
@@ -362,6 +351,7 @@ void upload_lights_and_position(GLuint shader){
     int shininess_location = glGetUniformLocation(shader, "shininess");
     int lod_location = glGetUniformLocation(shader, "lod");
     int ss_location = glGetUniformLocation(shader, "surface_shift");
+    int pr_location = glGetUniformLocation(shader, "project_transvoxel");
 
     glUniform3f(light_position_location, 0.0, 0.0, 10.0f);
     glUniform3f(light_specular_color_location, 255.0f / 255.0f, 255.0f / 255.0f, 160.0f / 255.0f);
@@ -371,6 +361,7 @@ void upload_lights_and_position(GLuint shader){
     glUniform1f(shininess_location, 30.0f);
     glUniform1i(lod_location, lod);
     glUniform1i(ss_location, surface_shift);
+    glUniform1i(pr_location, project_transvoxel);
 }
 
 void draw_imgui_windows(){
@@ -398,11 +389,19 @@ void draw_imgui_windows(){
         } else {
             ImGui::Text("LOD[R]: Off");
         }
+
         if(surface_shift == 1){
             ImGui::Text("Surface Shift[T]: On");
         } else {
             ImGui::Text("Surface Shift[T]: Off");
         }
+
+        if(project_transvoxel == 1){
+            ImGui::Text("Project Transvoxel Vertices[F]: On");
+        } else {
+            ImGui::Text("Project Transvoxel Vertices[F]: Off");
+        }
+
         ImGui::End();
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -425,6 +424,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         }
     }
 
+    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+        project_transvoxel = !project_transvoxel;
+    }
 
     if (key == GLFW_KEY_M && action == GLFW_PRESS) {
         current_mode = (current_mode % 3) + 1;
