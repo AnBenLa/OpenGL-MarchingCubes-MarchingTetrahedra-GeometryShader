@@ -79,8 +79,11 @@ vec4 interpolate_vertex_surface_shifting(float iso_value, vec4 a, vec4 b, float 
 
     if((value_a-iso_value)*(value_c-iso_value)<0){
         return vec4((a + (iso_value - value_a)*(c - a)/(value_c - value_a)).xyz, 1);
+    } else if ((value_b-iso_value)*(value_c-iso_value)<0){
+        return vec4((b + (iso_value - value_b)*(c - b)/(value_c - value_b)).xyz, 1);
+    } else {
+        return vec4((a + (iso_value - value_a)*(b - a)/(value_b - value_a)).xyz, 1);
     }
-    return vec4((b + (iso_value - value_b)*(c - b)/(value_c - value_b)).xyz, 1);
 }
 
 int check_for_occupancy(vec3 voxel_pos){
