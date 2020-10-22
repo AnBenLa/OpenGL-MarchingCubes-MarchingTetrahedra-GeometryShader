@@ -1,6 +1,6 @@
 #version 430
 layout (points) in;
-layout (triangle_strip, max_vertices = 40) out;
+layout (triangle_strip, max_vertices = 73) out;
 
 out fData
 {
@@ -23,6 +23,7 @@ uniform float voxel_size;
 uniform int lod;
 uniform int surface_shift;
 uniform int project_transvoxel;
+uniform int transition_cell;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -121,6 +122,96 @@ vec3 compute_gradient(vec3 in_sampling_pos){
     float d_y = (y_p_1 - y_m_1) * 0.5;
     float d_z = (z_p_1 - z_m_1) * 0.5;
     return normalize(vec3(d_x, d_y, d_z));
+}
+
+void process_left_transistion_cell(){
+    mat4 mvp = projection * view * model;
+    int voxel_size_lod = 2;
+    vec4 sample_positions[13];
+    sample_positions[0] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[0];
+    sample_positions[2] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[2];
+    sample_positions[6] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[4];
+    sample_positions[8] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[6];
+
+    sample_positions[1] = (sample_positions[0] + sample_positions[2])*0.5f;
+    sample_positions[3] = (sample_positions[0] + sample_positions[6])*0.5f;
+    sample_positions[5] = (sample_positions[2] + sample_positions[8])*0.5f;
+    sample_positions[7] = (sample_positions[6] + sample_positions[8])*0.5f;
+    sample_positions[4] = (sample_positions[3] + sample_positions[5])*0.5f;
+
+    sample_positions[9] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[0];
+    sample_positions[10] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[2];
+    sample_positions[11] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[4];
+    sample_positions[12] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[6];
+
+    int left_index = 0;
+    int k = 1;
+    float corner_sample[12];
+
+    for (int i = 0; i < 9; i++){
+        corner_sample[i] = sample_volume(sample_positions[i]);
+        if (corner_sample[i] < iso_value) left_index |= k;
+        k = k << 1;
+    }
+    if (left_index != 0 && left_index != 511){
+        int trans_cell_class = texelFetch(transitionCellClass, ivec2(left_index, 0), 0).r;
+        int geometry_count = texelFetch(transitionCellData, ivec2(0, trans_cell_class  & 0x7F), 0).r;
+        int trans_vertex_count = geometry_count >> 4;
+        int trans_triangle_count = geometry_count & 0x0F;
+
+        int trans_vertex_data[12];
+        vec4 trans_vertices[16];
+
+        for (int i = 0; i < 12; i++){
+            trans_vertex_data[i] = texelFetch(transitionCellVertexData, ivec2(i, left_index), 0).r;
+        }
+
+        for (int i = 0; i < trans_vertex_count; i++){
+
+            int vertex = trans_vertex_data[i];
+            if (vertex == 0)break;
+
+            int corner_1 = (vertex >> 4) & 0x0F;
+            int corner_2 = vertex & 0x0F;
+
+            vec4 a = sample_positions[corner_1];
+            vec4 b = sample_positions[corner_2];
+            float value_a = corner_sample[corner_1];
+            float value_b = corner_sample[corner_2];
+            trans_vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);
+        }
+
+        for (int i = 0; i < trans_triangle_count * 3;i += 3){
+            int a_index = texelFetch(transitionCellData, ivec2(i+1, left_index), 0).r;
+            int b_index = texelFetch(transitionCellData, ivec2(i+2, left_index), 0).r;
+            int c_index = texelFetch(transitionCellData, ivec2(i+3, left_index), 0).r;
+
+            vec4 vert_a = trans_vertices[a_index];
+            vec4 vert_b = trans_vertices[b_index];
+            vec4 vert_c = trans_vertices[c_index];
+
+            vec3 a = vert_a.xyz - vert_b.xyz;
+            vec3 b = vert_c.xyz - vert_b.xyz;
+            vec3 n = abs(normalize(cross(a, b)));
+            frag.normal = n;
+
+            gl_Position = mvp * vert_a;
+            frag.position = (model * vert_a).xyz;
+            frag.color = model * vert_a;
+            EmitVertex();
+
+            gl_Position = mvp * vert_b;
+            frag.position = (model * vert_b).xyz;
+            frag.color = model * vert_b;
+            EmitVertex();
+
+            gl_Position = mvp * vert_c;
+            frag.position = (model * vert_c).xyz;
+            frag.color = model * vert_c;
+            EmitVertex();
+            EndPrimitive();
+        }
+    }
 }
 
 void marching_cubes(){
@@ -300,6 +391,10 @@ void marching_cubes(){
             vertex_normals[i] = vec4((normal_a + (normal_b - normal_a)/(value_b - value_a) * (iso_value - value_a)),1);
 
             adjusted_vertices[i] = interpolate_vertex(iso_value, a_adj, b_adj, value_a, value_b);
+
+            if(lod_left == 1 && transition_cell == 1){
+                process_left_transistion_cell();
+            }
         }
     }
 
