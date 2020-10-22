@@ -107,6 +107,22 @@ vec4 project_onto_plane(vec4 point, vec3 normal, vec4 plane_point){
     return vec4(point.x + t * normal.x, point.y + t * normal.y, point.z + t * normal.z, 1);
 }
 
+vec3 compute_gradient(vec3 in_sampling_pos){
+    // the distance is the length of the ray increment
+    // this distance was choosen to calculate a more accurate normal
+    float distance =  0.1f;
+    float x_p_1 = sample_volume(vec4(in_sampling_pos.x + distance, in_sampling_pos.y, in_sampling_pos.z, 1));
+    float x_m_1 = sample_volume(vec4(in_sampling_pos.x - distance, in_sampling_pos.y, in_sampling_pos.z, 1));
+    float y_p_1 = sample_volume(vec4(in_sampling_pos.x, in_sampling_pos.y + distance, in_sampling_pos.z, 1));
+    float y_m_1 = sample_volume(vec4(in_sampling_pos.x, in_sampling_pos.y - distance, in_sampling_pos.z, 1));
+    float z_p_1 = sample_volume(vec4(in_sampling_pos.x, in_sampling_pos.y, in_sampling_pos.z + distance, 1));
+    float z_m_1 = sample_volume(vec4(in_sampling_pos.x, in_sampling_pos.y, in_sampling_pos.z - distance, 1));
+    float d_x = (x_p_1 - x_m_1) * 0.5;
+    float d_y = (y_p_1 - y_m_1) * 0.5;
+    float d_z = (z_p_1 - z_m_1) * 0.5;
+    return normalize(vec3(d_x, d_y, d_z));
+}
+
 void marching_cubes(){
     float[8] corner_sample;
     mat4 mvp = projection * view * model;
@@ -243,6 +259,7 @@ void marching_cubes(){
     }
 
     vec4[12] vertices;
+    vec4[12] vertex_normals;
     vec4[12] adjusted_vertices;
 
     for(int i = 0; i < vertex_count; i++){
@@ -268,11 +285,21 @@ void marching_cubes(){
             vec4 a_adj = gl_in[0].gl_Position + voxel_size_lod * transvoxel_adjust[corner_1];
             vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod * transvoxel_adjust[corner_2];
 
-            if(surface_shift == 0 || voxel_size_lod == 1){
-                adjusted_vertices[i] = interpolate_vertex(iso_value, a_adj, b_adj, value_a, value_b);
-            } else {
-                adjusted_vertices[i] = interpolate_vertex_surface_shifting(iso_value, a_adj, b_adj, value_a, value_b);
+            //TODO verify if corner normals are computed correctly!
+            vec3 normal_a = compute_gradient(a.xyz);
+            vec3 normal_b = compute_gradient(b.xyz);
+            if(value_b < value_a){
+                float tmp = value_a;
+                value_a = value_b;
+                value_b = value_a;
+                vec3 tmp_n = normal_a;
+                normal_a = normal_b;
+                normal_b = normal_a;
             }
+
+            vertex_normals[i] = vec4((normal_a + (normal_b - normal_a)/(value_b - value_a) * (iso_value - value_a)),1);
+
+            adjusted_vertices[i] = interpolate_vertex(iso_value, a_adj, b_adj, value_a, value_b);
         }
     }
 
@@ -291,16 +318,15 @@ void marching_cubes(){
         vec3 n = abs(normalize(cross(a, b)));
         frag.normal = n;
 
-        // TODO needs to be fixed
         if(transvoxel && project_transvoxel == 1){
             // get the points of the vertex after adjustment
             vec4 vert_a_adj = adjusted_vertices[a_index];
             vec4 vert_b_adj = adjusted_vertices[b_index];
             vec4 vert_c_adj = adjusted_vertices[c_index];
             // project the vertices onto the triangle plane
-            vert_a = project_onto_plane(vert_a_adj, n, vert_a);
-            vert_b = project_onto_plane(vert_b_adj, n, vert_b);
-            vert_c = project_onto_plane(vert_c_adj, n, vert_c);
+            vert_a = project_onto_plane(vert_a_adj, vertex_normals[a_index].xyz, vert_a);
+            vert_b = project_onto_plane(vert_b_adj, vertex_normals[b_index].xyz, vert_b);
+            vert_c = project_onto_plane(vert_c_adj, vertex_normals[c_index].xyz, vert_c);
         } else if (transvoxel){
             vert_a = adjusted_vertices[a_index];
             vert_b = adjusted_vertices[b_index];
