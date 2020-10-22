@@ -154,8 +154,8 @@ void marching_cubes(){
         if ((cut_edges & k) == k){
             int a_index = edge_vertex_mapping[i][0];
             int b_index = edge_vertex_mapping[i][1];
-            vec4 a = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[a_index];
-            vec4 b = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[b_index];
+            vec4 a = gl_in[0].gl_Position + voxel_size_lod * corner[a_index];
+            vec4 b = gl_in[0].gl_Position + voxel_size_lod * corner[b_index];
             float value_a = corner_sample[a_index];
             float value_b = corner_sample[b_index];
             if(surface_shift == 0 || voxel_size_lod == 1){

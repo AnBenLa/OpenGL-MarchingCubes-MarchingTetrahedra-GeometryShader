@@ -282,8 +282,8 @@ void marching_cubes(){
         }
 
         if(transvoxel){
-            vec4 a_adj = gl_in[0].gl_Position + voxel_size_lod * transvoxel_adjust[corner_1];
-            vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod * transvoxel_adjust[corner_2];
+            vec4 a_adj = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[corner_1];
+            vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[corner_2];
 
             //TODO verify if corner normals are computed correctly!
             vec3 normal_a = compute_gradient(a.xyz);
