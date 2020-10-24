@@ -113,16 +113,19 @@ vec4 project_onto_plane(vec4 point, vec3 normal, vec4 plane_point){
     return vec4(point.x + t * normal.x, point.y + t * normal.y, point.z + t * normal.z, 1);
 }
 
-vec3 compute_gradient(vec3 in_sampling_pos){
+vec3 compute_gradient(vec3 in_sampling_pos, float voxel_size){
     // the distance is the length of the ray increment
     // this distance was choosen to calculate a more accurate normal
-    float distance =  0.1f;
+    float distance =  voxel_size;//0.1f;
     float x_p_1 = sample_volume(vec4(in_sampling_pos.x + distance, in_sampling_pos.y, in_sampling_pos.z, 1));
     float x_m_1 = sample_volume(vec4(in_sampling_pos.x - distance, in_sampling_pos.y, in_sampling_pos.z, 1));
+
     float y_p_1 = sample_volume(vec4(in_sampling_pos.x, in_sampling_pos.y + distance, in_sampling_pos.z, 1));
     float y_m_1 = sample_volume(vec4(in_sampling_pos.x, in_sampling_pos.y - distance, in_sampling_pos.z, 1));
+
     float z_p_1 = sample_volume(vec4(in_sampling_pos.x, in_sampling_pos.y, in_sampling_pos.z + distance, 1));
     float z_m_1 = sample_volume(vec4(in_sampling_pos.x, in_sampling_pos.y, in_sampling_pos.z - distance, 1));
+
     float d_x = (x_p_1 - x_m_1) * 0.5;
     float d_y = (y_p_1 - y_m_1) * 0.5;
     float d_z = (z_p_1 - z_m_1) * 0.5;
@@ -376,8 +379,8 @@ void marching_cubes(){
             vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_2];
 
             //TODO verify if corner normals are computed correctly!
-            vec3 normal_a = compute_gradient(a.xyz);
-            vec3 normal_b = compute_gradient(b.xyz);
+            vec3 normal_a = compute_gradient(a.xyz, voxel_size_lod * voxel_size * transvoxel_cell_multiplier);
+            vec3 normal_b = compute_gradient(b.xyz, voxel_size_lod * voxel_size * transvoxel_cell_multiplier);
             if(value_b < value_a){
                 float tmp = value_a;
                 value_a = value_b;
