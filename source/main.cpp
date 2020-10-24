@@ -24,6 +24,7 @@ int width = 800, height = 600, current_mode = 1;
 float last_x, last_y, delta_time = 0.0f, last_frame_time = 0.0f, current_iso_value = 0.2, current_voxel_size = 1.0f;
 unsigned short x_dim = 32, y_dim = 32, z_dim = 32;
 bool wireframe = false, first_mouse = false, show_voxels = false, sample = false, surface_shift = false, project_transvoxel = false, transition_cell = false;
+int transvoxel_cell_multiplier = 5;
 std::vector<glm::vec3> points;
 Camera *camera = new Camera{glm::vec3{0, 0, 1}, glm::vec3{0, 1, 0}};
 GLuint volume_texture_id, edge_table_texture_id, triangle_table_texture_id, VBO, VAO, lod = 0;
@@ -353,6 +354,7 @@ void upload_lights_and_position(GLuint shader){
     int ss_location = glGetUniformLocation(shader, "surface_shift");
     int pr_location = glGetUniformLocation(shader, "project_transvoxel");
     int tr_location = glGetUniformLocation(shader, "transition_cell");
+    int tr_mult_location = glGetUniformLocation(shader, "transvoxel_cell_multiplier");
 
     glUniform3f(light_position_location, 0.0, 0.0, 10.0f);
     glUniform3f(light_specular_color_location, 255.0f / 255.0f, 255.0f / 255.0f, 160.0f / 255.0f);
@@ -364,6 +366,7 @@ void upload_lights_and_position(GLuint shader){
     glUniform1i(ss_location, surface_shift);
     glUniform1i(pr_location, project_transvoxel);
     glUniform1i(tr_location, transition_cell);
+    glUniform1i(tr_mult_location, transvoxel_cell_multiplier);
 }
 
 void draw_imgui_windows(){
@@ -409,6 +412,8 @@ void draw_imgui_windows(){
         } else {
             ImGui::Text("Transition Cell[B]: Off");
         }
+
+        ImGui::Text("Transvoxel Cellsize [+/-]: %.1f",transvoxel_cell_multiplier*0.1);
 
         ImGui::End();
         ImGui::Render();
@@ -494,6 +499,14 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
     if (key == GLFW_KEY_B && action == GLFW_PRESS) {
         transition_cell = !transition_cell;
+    }
+
+    if (transition_cell && key == GLFW_KEY_KP_ADD && action == GLFW_PRESS && transvoxel_cell_multiplier < 9){
+        transvoxel_cell_multiplier++;
+    }
+
+    if (transition_cell && key == GLFW_KEY_KP_SUBTRACT && action == GLFW_PRESS && transvoxel_cell_multiplier > 1){
+        transvoxel_cell_multiplier--;
     }
 
     if (key == GLFW_KEY_R && action == GLFW_PRESS) {

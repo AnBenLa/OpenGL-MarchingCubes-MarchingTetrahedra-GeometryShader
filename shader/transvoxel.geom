@@ -24,6 +24,8 @@ uniform int lod;
 uniform int surface_shift;
 uniform int project_transvoxel;
 uniform int transition_cell;
+uniform int transvoxel_cell_multiplier;
+float transvoxel_size = 0.1f * transvoxel_cell_multiplier;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -174,7 +176,7 @@ void process_left_transistion_cell(){
             int vertex = trans_vertex_data[i];
             if (vertex == 0)break;
 
-            int corner_1 = (vertex >> 4) & 0x0F;
+            int corner_1 = (vertex >> 4) & 0x0F; 
             int corner_2 = vertex & 0x0F;
 
             vec4 a = sample_positions[corner_1];
@@ -233,8 +235,6 @@ void marching_cubes(){
     int lod_front = 2;
     int lod_back = 2;
 
-    float transvoxel_size = 0.2f;
-
     if (lod == 1){
         // voxel position normalized (always integer values after the division by voxel size)
         int x = int(gl_in[0].gl_Position.x / voxel_size);
@@ -277,7 +277,7 @@ void marching_cubes(){
                 transvoxel = true;
             }
 
-            if (lod_right == 1){
+            /*if (lod_right == 1){
                 transvoxel_adjust[1] = transvoxel_adjust[1] + vec4(-transvoxel_size, 0, 0, 0);
                 transvoxel_adjust[3] = transvoxel_adjust[3] + vec4(-transvoxel_size, 0, 0, 0);
                 transvoxel_adjust[5] = transvoxel_adjust[5] + vec4(-transvoxel_size, 0, 0, 0);
@@ -315,12 +315,8 @@ void marching_cubes(){
                 transvoxel_adjust[6] = transvoxel_adjust[6] + vec4(0, 0, -transvoxel_size, 0);
                 transvoxel_adjust[7] = transvoxel_adjust[7] + vec4(0, 0, -transvoxel_size, 0);
                 transvoxel = true;
-            }
-
-
+            }*/
         }
-
-
     }
 
     // calculate lod of neighbouring voxels
@@ -376,8 +372,8 @@ void marching_cubes(){
         }
 
         if(transvoxel){
-            vec4 a_adj = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[corner_1];
-            vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[corner_2];
+            vec4 a_adj = gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_1];
+            vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_2];
 
             //TODO verify if corner normals are computed correctly!
             vec3 normal_a = compute_gradient(a.xyz);
@@ -385,10 +381,10 @@ void marching_cubes(){
             if(value_b < value_a){
                 float tmp = value_a;
                 value_a = value_b;
-                value_b = value_a;
+                value_b = tmp;
                 vec3 tmp_n = normal_a;
                 normal_a = normal_b;
-                normal_b = normal_a;
+                normal_b = tmp_n;
             }
 
             vertex_normals[i] = vec4((normal_a + (normal_b - normal_a)/(value_b - value_a) * (iso_value - value_a)),1);
