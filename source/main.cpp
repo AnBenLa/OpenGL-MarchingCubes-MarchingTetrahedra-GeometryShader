@@ -413,7 +413,7 @@ void draw_imgui_windows(){
             ImGui::Text("Transition Cell[B]: Off");
         }
 
-        ImGui::Text("Transvoxel Cellsize [+/-]: %.1f",transvoxel_cell_multiplier*0.1);
+        ImGui::Text("Transvoxel Cellsize [G/H]: %.1f",transvoxel_cell_multiplier*0.1);
 
         ImGui::End();
         ImGui::Render();
@@ -501,11 +501,11 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         transition_cell = !transition_cell;
     }
 
-    if (transition_cell && key == GLFW_KEY_KP_ADD && action == GLFW_PRESS && transvoxel_cell_multiplier < 9){
+    if (transition_cell && key == GLFW_KEY_G && action == GLFW_PRESS && transvoxel_cell_multiplier < 9){
         transvoxel_cell_multiplier++;
     }
 
-    if (transition_cell && key == GLFW_KEY_KP_SUBTRACT && action == GLFW_PRESS && transvoxel_cell_multiplier > 1){
+    if (transition_cell && key == GLFW_KEY_H && action == GLFW_PRESS && transvoxel_cell_multiplier > 1){
         transvoxel_cell_multiplier--;
     }
 

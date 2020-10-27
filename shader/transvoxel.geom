@@ -136,31 +136,64 @@ void process_left_transistion_cell(){
     mat4 mvp = projection * view * model;
     int voxel_size_lod = 2;
     vec4 sample_positions[13];
-    sample_positions[0] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[0];
-    sample_positions[2] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[2];
-    sample_positions[6] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[4];
-    sample_positions[8] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * corner[6];
+
+    // voxel position normalized (always integer values after the division by voxel size)
+    int x = int(gl_in[0].gl_Position.x / voxel_size);
+    int y = int(gl_in[0].gl_Position.y / voxel_size);
+    int z = int(gl_in[0].gl_Position.z / voxel_size);
+
+    // base voxel position
+    float x_base = (x - (x%2)) * voxel_size;
+    float y_base = (y - (y%2)) * voxel_size;
+    float z_base = (z - (z%2)) * voxel_size;
+
+    vec4 pos = vec4(x_base,y_base,z_base, 1);
+
+    int index_1 = 0;
+    int index_2 = 2;
+    int index_3 = 4;
+    int index_4 = 6;
+
+    index_1 = 2;
+    index_2 = 0;
+    index_3 = 6;
+    index_4 = 4;
+
+    sample_positions[0] = pos + voxel_size_lod * voxel_size * corner[index_1];
+    sample_positions[2] = pos + voxel_size_lod * voxel_size * corner[index_2];
+    sample_positions[6] = pos + voxel_size_lod * voxel_size * corner[index_3];
+    sample_positions[8] = pos + voxel_size_lod * voxel_size * corner[index_4];
 
     sample_positions[1] = (sample_positions[0] + sample_positions[2])*0.5f;
     sample_positions[3] = (sample_positions[0] + sample_positions[6])*0.5f;
     sample_positions[5] = (sample_positions[2] + sample_positions[8])*0.5f;
     sample_positions[7] = (sample_positions[6] + sample_positions[8])*0.5f;
-    sample_positions[4] = (sample_positions[3] + sample_positions[5])*0.5f;
+    sample_positions[4] = (sample_positions[1] + sample_positions[7])*0.5f;
 
-    sample_positions[9] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[0];
-    sample_positions[10] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[2];
-    sample_positions[11] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[4];
-    sample_positions[12] = gl_in[0].gl_Position + voxel_size_lod * voxel_size * transvoxel_adjust[6];
+    sample_positions[9] = pos + voxel_size_lod * voxel_size * transvoxel_adjust[index_1];
+    sample_positions[10] = pos + voxel_size_lod * voxel_size * transvoxel_adjust[index_2];
+    sample_positions[11] = pos + voxel_size_lod * voxel_size * transvoxel_adjust[index_3];
+    sample_positions[12] = pos + voxel_size_lod * voxel_size * transvoxel_adjust[index_4];
 
     int left_index = 0;
     int k = 1;
-    float corner_sample[12];
+    float corner_sample[13];
 
     for (int i = 0; i < 9; i++){
         corner_sample[i] = sample_volume(sample_positions[i]);
         if (corner_sample[i] < iso_value) left_index |= k;
         k = k << 1;
     }
+
+    corner_sample[9] = corner_sample[0];
+    corner_sample[10] = corner_sample[2];
+    corner_sample[11] = corner_sample[4];
+    corner_sample[12] = corner_sample[6];
+
+    for(int i = 9; i < 13; ++i){
+        corner_sample[i] = sample_volume(sample_positions[i]);
+    }
+
     if (left_index != 0 && left_index != 511){
         int trans_cell_class = texelFetch(transitionCellClass, ivec2(left_index, 0), 0).r;
         int geometry_count = texelFetch(transitionCellData, ivec2(0, trans_cell_class  & 0x7F), 0).r;
@@ -186,13 +219,19 @@ void process_left_transistion_cell(){
             vec4 b = sample_positions[corner_2];
             float value_a = corner_sample[corner_1];
             float value_b = corner_sample[corner_2];
-            trans_vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);
+            if((value_a - iso_value) * (value_b - iso_value) < 0 ){
+                trans_vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);
+            } else if(abs(value_a - value_b) < 0.001f){
+                trans_vertices[i] = a;
+            } else {
+                trans_vertices[i] = b;
+            }
         }
 
-        for (int i = 0; i < trans_triangle_count * 3;i += 3){
-            int a_index = texelFetch(transitionCellData, ivec2(i+1, left_index), 0).r;
-            int b_index = texelFetch(transitionCellData, ivec2(i+2, left_index), 0).r;
-            int c_index = texelFetch(transitionCellData, ivec2(i+3, left_index), 0).r;
+        for (int i = 0; i < trans_triangle_count * 3; i += 3){
+            int a_index = texelFetch(transitionCellData, ivec2(i+1, trans_cell_class & 0x7F), 0).r;
+            int b_index = texelFetch(transitionCellData, ivec2(i+2, trans_cell_class & 0x7F), 0).r;
+            int c_index = texelFetch(transitionCellData, ivec2(i+3, trans_cell_class & 0x7F), 0).r;
 
             vec4 vert_a = trans_vertices[a_index];
             vec4 vert_b = trans_vertices[b_index];
@@ -229,6 +268,8 @@ void marching_cubes(){
     int voxel_size_lod = 1;
 
     bool transvoxel = false;
+    bool draw_voxel = true;
+    int pos = 0;
 
     //LOD configurations of neightbours
     int lod_left = 2;
@@ -255,7 +296,10 @@ void marching_cubes(){
         // check if voxel is covered
         // if covered return;
         if (voxel_size_lod == 2 && (x % 2 == 1 || y % 2 == 1 || z % 2 == 1)){
-            return;
+            draw_voxel = false;
+            pos += x % 2;
+            pos += (y % 2) * 2;
+            pos += (z % 2) * 4;
         }
 
         // if we have a larger voxel check if the neighbour voxels are smaller (if so we have a transvoxel)
@@ -332,119 +376,122 @@ void marching_cubes(){
     // sample the volume at each corner and store the result in the corner sample array
     // compute the index of the cube that will define which triangles will be generated
     // this works already
-    for (int i = 0; i < 8; i++){
-        // scale the voxels according to the voxel size
-        corner_sample[i] = sample_volume(gl_in[0].gl_Position + voxel_size_lod * corner[i]);
-        if (corner_sample[i] < iso_value) cube_index |= k;
-        // do a bit shift in order to multiply with 2 faster
-        k = k << 1;
-    }
-
-    //get table data
-    int cell_class = texelFetch(cellClass, ivec2(cube_index, 0), 0).r;
-    int geometry_count = texelFetch(cellData, ivec2(0, cell_class), 0).r;
-    int vertex_count = geometry_count >> 4;
-    int triangle_count = geometry_count & 0x0F;
-
-    int vertex_data[12];
-    for(int i = 0; i < 12; i++){
-        vertex_data[i] = texelFetch(vertexData, ivec2(i, cube_index), 0).r;
-    }
-
-    vec4[12] vertices;
-    vec4[12] vertex_normals;
-    vec4[12] adjusted_vertices;
-
-    for(int i = 0; i < vertex_count; i++){
-
-        int vertex = vertex_data[i];
-        if(vertex == 0)break;
-
-        int corner_1 = (vertex >> 4) & 0x0F;
-        int corner_2 = vertex & 0x0F;
-
-        vec4 a = gl_in[0].gl_Position + voxel_size_lod * corner[corner_1];
-        vec4 b = gl_in[0].gl_Position + voxel_size_lod * corner[corner_2];
-        float value_a = corner_sample[corner_1];
-        float value_b = corner_sample[corner_2];
-
-        if(surface_shift == 0 || voxel_size_lod == 1){
-            vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);
-        } else {
-            vertices[i] = interpolate_vertex_surface_shifting(iso_value, a, b, value_a, value_b);
+    if(draw_voxel){
+        for (int i = 0; i < 8; i++){
+            // scale the voxels according to the voxel size
+            corner_sample[i] = sample_volume(gl_in[0].gl_Position + voxel_size_lod * corner[i]);
+            if (corner_sample[i] < iso_value) cube_index |= k;
+            // do a bit shift in order to multiply with 2 faster
+            k = k << 1;
         }
 
-        if(transvoxel){
-            vec4 a_adj = gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_1];
-            vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_2];
+        //get table data
+        int cell_class = texelFetch(cellClass, ivec2(cube_index, 0), 0).r;
+        int geometry_count = texelFetch(cellData, ivec2(0, cell_class), 0).r;
+        int vertex_count = geometry_count >> 4;
+        int triangle_count = geometry_count & 0x0F;
 
-            //TODO verify if corner normals are computed correctly!
-            vec3 normal_a = compute_gradient(a.xyz, voxel_size_lod * voxel_size * transvoxel_cell_multiplier);
-            vec3 normal_b = compute_gradient(b.xyz, voxel_size_lod * voxel_size * transvoxel_cell_multiplier);
-            if(value_b < value_a){
-                float tmp = value_a;
-                value_a = value_b;
-                value_b = tmp;
-                vec3 tmp_n = normal_a;
-                normal_a = normal_b;
-                normal_b = tmp_n;
+        int vertex_data[12];
+        for (int i = 0; i < 12; i++){
+            vertex_data[i] = texelFetch(vertexData, ivec2(i, cube_index), 0).r;
+        }
+
+        vec4[12] vertices;
+        vec4[12] vertex_normals;
+        vec4[12] adjusted_vertices;
+
+        for (int i = 0; i < vertex_count; i++){
+
+            int vertex = vertex_data[i];
+            if (vertex == 0)break;
+
+            int corner_1 = (vertex >> 4) & 0x0F;
+            int corner_2 = vertex & 0x0F;
+
+            vec4 a = gl_in[0].gl_Position + voxel_size_lod * corner[corner_1];
+            vec4 b = gl_in[0].gl_Position + voxel_size_lod * corner[corner_2];
+            float value_a = corner_sample[corner_1];
+            float value_b = corner_sample[corner_2];
+
+            if (surface_shift == 0 || voxel_size_lod == 1){
+                vertices[i] = interpolate_vertex(iso_value, a, b, value_a, value_b);
+            } else {
+                vertices[i] = interpolate_vertex_surface_shifting(iso_value, a, b, value_a, value_b);
             }
 
-            vertex_normals[i] = vec4((normal_a + (normal_b - normal_a)/(value_b - value_a) * (iso_value - value_a)),1);
+            if (transvoxel){
+                vec4 a_adj = gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_1];
+                vec4 b_adj = gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_2];
+                //float value_a = sample_volume(gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_1]);
+                //float value_b = sample_volume(gl_in[0].gl_Position + voxel_size_lod  * voxel_size * transvoxel_adjust[corner_2]);
+                //TODO verify if corner normals are computed correctly!
+                vec3 normal_a = compute_gradient(a.xyz, voxel_size_lod * voxel_size * transvoxel_cell_multiplier);
+                vec3 normal_b = compute_gradient(b.xyz, voxel_size_lod * voxel_size * transvoxel_cell_multiplier);
+                if (value_b < value_a){
+                    float tmp = value_a;
+                    value_a = value_b;
+                    value_b = tmp;
+                    vec3 tmp_n = normal_a;
+                    normal_a = normal_b;
+                    normal_b = tmp_n;
+                }
 
-            adjusted_vertices[i] = interpolate_vertex(iso_value, a_adj, b_adj, value_a, value_b);
+                vertex_normals[i] = vec4((normal_a + (normal_b - normal_a)/(value_b - value_a) * (iso_value - value_a)), 1);
 
-            if(lod_left == 1 && transition_cell == 1){
-                process_left_transistion_cell();
+                adjusted_vertices[i] = interpolate_vertex(iso_value, a_adj, b_adj, value_a, value_b);
             }
         }
-    }
 
-    //generate triangles
-    for(int i = 0; i < triangle_count * 3;i += 3){
-        int a_index = texelFetch(cellData, ivec2(i+1, cell_class), 0).r;
-        int b_index = texelFetch(cellData, ivec2(i+2, cell_class), 0).r;
-        int c_index = texelFetch(cellData, ivec2(i+3, cell_class), 0).r;
+        //generate triangles
+        for (int i = 0; i < triangle_count * 3;i += 3){
+            int a_index = texelFetch(cellData, ivec2(i+1, cell_class), 0).r;
+            int b_index = texelFetch(cellData, ivec2(i+2, cell_class), 0).r;
+            int c_index = texelFetch(cellData, ivec2(i+3, cell_class), 0).r;
 
-        vec4 vert_a = vertices[a_index];
-        vec4 vert_b = vertices[b_index];
-        vec4 vert_c = vertices[c_index];
+            vec4 vert_a = vertices[a_index];
+            vec4 vert_b = vertices[b_index];
+            vec4 vert_c = vertices[c_index];
 
-        vec3 a = vert_a.xyz - vert_b.xyz;
-        vec3 b = vert_c.xyz - vert_b.xyz;
-        vec3 n = abs(normalize(cross(a, b)));
-        frag.normal = n;
+            vec3 a = vert_a.xyz - vert_b.xyz;
+            vec3 b = vert_c.xyz - vert_b.xyz;
+            vec3 n = abs(normalize(cross(a, b)));
+            frag.normal = n;
 
-        if(transvoxel && project_transvoxel == 1){
-            // get the points of the vertex after adjustment
-            vec4 vert_a_adj = adjusted_vertices[a_index];
-            vec4 vert_b_adj = adjusted_vertices[b_index];
-            vec4 vert_c_adj = adjusted_vertices[c_index];
-            // project the vertices onto the triangle plane
-            vert_a = project_onto_plane(vert_a_adj, vertex_normals[a_index].xyz, vert_a);
-            vert_b = project_onto_plane(vert_b_adj, vertex_normals[b_index].xyz, vert_b);
-            vert_c = project_onto_plane(vert_c_adj, vertex_normals[c_index].xyz, vert_c);
-        } else if (transvoxel){
-            vert_a = adjusted_vertices[a_index];
-            vert_b = adjusted_vertices[b_index];
-            vert_c = adjusted_vertices[c_index];
+            if (transvoxel && project_transvoxel == 1){
+                // get the points of the vertex after adjustment
+                vec4 vert_a_adj = adjusted_vertices[a_index];
+                vec4 vert_b_adj = adjusted_vertices[b_index];
+                vec4 vert_c_adj = adjusted_vertices[c_index];
+                // project the vertices onto the triangle plane
+                vert_a = project_onto_plane(vert_a_adj, vertex_normals[a_index].xyz, vert_a);
+                vert_b = project_onto_plane(vert_b_adj, vertex_normals[b_index].xyz, vert_b);
+                vert_c = project_onto_plane(vert_c_adj, vertex_normals[c_index].xyz, vert_c);
+            } else if (transvoxel){
+                vert_a = adjusted_vertices[a_index];
+                vert_b = adjusted_vertices[b_index];
+                vert_c = adjusted_vertices[c_index];
+            }
+
+            gl_Position = mvp * vert_a;
+            frag.position = (model * vert_a).xyz;
+            frag.color = model * vert_a;
+            EmitVertex();
+
+            gl_Position = mvp * vert_b;
+            frag.position = (model * vert_b).xyz;
+            frag.color = model * vert_b;
+            EmitVertex();
+
+            gl_Position = mvp * vert_c;
+            frag.position = (model * vert_c).xyz;
+            frag.color = model * vert_c;
+            EmitVertex();
+            EndPrimitive();
         }
-
-        gl_Position = mvp * vert_a;
-        frag.position = (model * vert_a).xyz;
-        frag.color = model * vert_a;
-        EmitVertex();
-
-        gl_Position = mvp * vert_b;
-        frag.position = (model * vert_b).xyz;
-        frag.color = model * vert_b;
-        EmitVertex();
-
-        gl_Position = mvp * vert_c;
-        frag.position = (model * vert_c).xyz;
-        frag.color = model * vert_c;
-        EmitVertex();
-        EndPrimitive();
+    } else {
+        if(pos == 1 && lod_left == 1 && transition_cell == 1){
+            process_left_transistion_cell();
+        }
     }
 }
 

@@ -83,7 +83,7 @@ vec4 interpolate_vertex(float iso_value, vec4 a, vec4 b, float value_a, float va
 }
 
 int lod_function(vec3 voxel_position){
-    if (length(vec3(0,0,0) /*camera_position*/ - (model*vec4(voxel_position, 1)).xyz) > 0.5)
+    if (length(vec3(0, 0, 0)/*camera_position*/ - (model*vec4(voxel_position, 1)).xyz) > 0.5)
         return 2;
     else
         return 1;
