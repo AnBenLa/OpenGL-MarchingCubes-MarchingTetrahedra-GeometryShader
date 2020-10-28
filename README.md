@@ -1,5 +1,11 @@
 # Visualization Final Project
 
+Marching Cubes and Marching Tetracubes using the geometry shader.
+Voxel size, isovalue can be modified at runtime.
+Simple LOD can be activated. Volumes up to 256x256x256 can be visualized.
+Surface Shifting can be activated to reduce holes between differen LODs.
+Transvoxel algorithm partially implemented.
+
 Installation on Windows:
 ========================
 It is recommended to use an IDE (CLion, Visual Studio, ...) but everything can be done without as well  
