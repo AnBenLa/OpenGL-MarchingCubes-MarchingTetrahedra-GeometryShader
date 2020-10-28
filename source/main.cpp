@@ -95,9 +95,8 @@ int main(int argc, const char *argv[]) {
         uploadMatrices(selected_shader->get_program());
         upload_iso_value_and_voxel_size(selected_shader->get_program());
         upload_lights_and_position(selected_shader->get_program());
-
         // specify the background color
-        glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
         // clear color, depth and stencil buffer
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

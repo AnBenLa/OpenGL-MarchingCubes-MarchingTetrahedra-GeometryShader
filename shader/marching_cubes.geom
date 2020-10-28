@@ -55,7 +55,7 @@ int edge_vertex_mapping[12][2] = {
 };
 
 int lod_function(vec3 voxel_position){
-    if (length(vec3(0, 0, 0)/*camera_position*/ - (model*vec4(voxel_position, 1)).xyz) > 0.5)
+    if (length(camera_position - (model*vec4(voxel_position, 1)).xyz) > 0.5)
         return 2;
     else
         return 1;
