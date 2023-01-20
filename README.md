@@ -1,4 +1,11 @@
-# Visualization Final Project
+# Marching Cubes - Marching Tetracubes - Transvoxel with simple LOD using OpenGL Geometry Shader
+
+Marching Cubes           |  Marching Tetracubes
+:-------------------------:|:-------------------------:
+![MarchingCubes](/images/MarchingCubes.png)  |  ![TetraCubes](/images/TetraCubes.png)
+
+Simple LOD:  
+![LOD](/images/LOD.png)
 
 Installation on Windows:
 ========================
